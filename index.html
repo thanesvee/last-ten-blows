@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>คำนวณ last ten blows</title>
+<meta name="description" content="คำนวณระยะจมหัวเสาเข็มจาก 10 ครั้งสุดท้าย (last ten blows) ด้วยสูตร driving formula 10 สมการ">
+<meta name="theme-color" content="#01512d">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f3f7f3;--card:#ffffff;--ink:#14231a;--muted:#55665a;--line:#cfdccf;
+  --g:#1b5e20;--g2:#2e7d32;--gl:#e3f1e3;--on-g:#ffffff;
+  --warn-bg:#fff4c2;--warn-ink:#5c4400;--bad-bg:#ffd9d6;--bad-ink:#7a1109;--ok-bg:#dff3e0;--ok-ink:#12501a;
+  --field:#ffffff;
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#0f1912;--card:#17251b;--ink:#e6efe7;--muted:#9fb3a3;--line:#2d4333;
+    --g:#66bb6a;--g2:#81c784;--gl:#1f3626;--on-g:#0b1a0e;
+    --warn-bg:#4a3d0a;--warn-ink:#ffe48a;--bad-bg:#5a1c18;--bad-ink:#ffc9c4;--ok-bg:#1d4024;--ok-ink:#b9e8bd;--field:#10201500}
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:'Sarabun','Noto Sans Thai','Leelawadee UI','Tahoma',system-ui,sans-serif;font-size:17px;line-height:1.5;padding-bottom:96px}
+header.top{position:sticky;top:0;z-index:20;background:var(--g);color:var(--on-g);padding:10px 16px calc(8px);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+header.top h1{font-size:19px;margin:0;font-weight:700;flex:1 1 auto}
+.tabs{display:flex;gap:6px}
+.tabs button{min-height:40px;padding:0 14px;border-radius:20px;border:2px solid rgba(255,255,255,.55);background:transparent;color:inherit;font:inherit;font-weight:600}
+.tabs button[aria-selected=true]{background:var(--on-g);color:var(--g);border-color:var(--on-g)}
+main{max-width:760px;margin:0 auto;padding:12px 16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin:0 0 14px}
+.card h2{font-size:18px;margin:0 0 10px;color:var(--g)}
+.card h2 .n{display:inline-block;width:26px;height:26px;line-height:26px;text-align:center;background:var(--g);color:var(--on-g);border-radius:50%;font-size:14px;margin-right:8px}
+label{display:block;font-weight:600;margin:10px 0 4px}
+select,input[type=number],input[type=text],input[type=date]{width:100%;min-height:48px;font:inherit;padding:8px 12px;border:1.5px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink)}
+select:focus,input:focus,button:focus-visible{outline:3px solid var(--g2);outline-offset:1px}
+.row{display:flex;gap:10px}.row>*{flex:1;min-width:0}
+.hint{font-size:14px;color:var(--muted);margin:4px 0}
+.badge{display:inline-block;font-size:12px;font-weight:600;background:var(--warn-bg);color:var(--warn-ink);border-radius:8px;padding:0 7px;margin-left:6px;vertical-align:middle}
+button.btn{min-height:50px;padding:0 18px;border-radius:12px;border:0;background:var(--g);color:var(--on-g);font:inherit;font-weight:700;font-size:17px;cursor:pointer}
+button.btn.sec{background:var(--gl);color:var(--g);border:1.5px solid var(--g)}
+button.btn.block{width:100%}
+.btnrow{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}.btnrow .btn{flex:1 1 150px}
+.tipbtn{border:0;background:var(--gl);color:var(--g);border-radius:50%;width:30px;height:30px;font-size:16px;font-weight:700;margin-left:6px;cursor:pointer;vertical-align:middle}
+.tip{background:var(--gl);border-left:4px solid var(--g);border-radius:8px;padding:8px 12px;font-size:15px;margin:6px 0}
+.pwarn{background:var(--warn-bg);color:var(--warn-ink);border-radius:8px;padding:6px 10px;font-size:15px;margin-top:6px}
+.formula{background:var(--gl);border-radius:10px;padding:10px 12px;font-size:17px;overflow-x:auto;font-weight:600}
+.vars{font-size:15px;margin:8px 0 0;padding:0;list-style:none}
+.vars li{padding:2px 0;border-bottom:1px dashed var(--line)}
+.vars b{color:var(--g)}
+.secsvg{text-align:center;margin:8px 0}.secsvg svg{max-width:260px;width:100%;height:auto}
+.kv{display:flex;justify-content:space-between;gap:10px;padding:4px 0;border-bottom:1px dashed var(--line)}.kv span:last-child{font-weight:600;text-align:right}
+.big{background:var(--g);color:var(--on-g);border-radius:14px;padding:16px;text-align:center;margin:6px 0 10px}
+.big .lab{font-size:15px;opacity:.9}.big .val{font-size:44px;font-weight:700;line-height:1.15}.big .sub{font-size:20px;font-weight:600}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px}.stat{background:var(--gl);border-radius:10px;padding:8px 10px;text-align:center}.stat b{display:block;font-size:22px}.stat span{font-size:13px;color:var(--muted)}
+.msg{border-radius:10px;padding:8px 12px;margin:6px 0;font-size:15.5px}.msg.warn{background:var(--warn-bg);color:var(--warn-ink)}.msg.bad{background:var(--bad-bg);color:var(--bad-ink)}.msg.ok{background:var(--ok-bg);color:var(--ok-ink)}.msg.info{background:var(--gl)}
+table.cmp{width:100%;border-collapse:collapse;font-size:14.5px}
+table.cmp th,table.cmp td{border:1px solid var(--line);padding:4px 6px;text-align:right}
+table.cmp th{background:var(--gl);color:var(--g)}table.cmp td:first-child,table.cmp th:first-child{text-align:left}
+.scroll{overflow-x:auto}
+#disc-bar{position:fixed;left:0;right:0;bottom:0;z-index:30;background:#3b2f00;color:#fff3c4;font-size:13px;line-height:1.35;padding:6px 14px calc(6px + env(safe-area-inset-bottom));cursor:pointer;border-top:2px solid #ffcc33}
+#disc-bar .t{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+#disc-bar.open .t{-webkit-line-clamp:unset;max-height:42vh;overflow:auto;display:block}
+#ack{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;padding:16px}
+#ack.show{display:flex}
+#ack .box{background:var(--card);border-radius:16px;max-width:560px;max-height:92vh;overflow:auto;padding:18px}
+#ack h2{margin:0 0 8px;color:var(--g)}
+#ack label.chk{display:flex;gap:10px;align-items:flex-start;font-weight:600;margin:14px 0}
+#ack input[type=checkbox]{width:26px;height:26px;flex:none}
+.chk{display:flex;gap:8px;align-items:center;font-weight:600}.chk input{width:22px;height:22px}
+#reportView{display:none}
+#reportView .paper{background:#fff;color:#000;border-radius:6px;padding:14px;border:1px solid var(--line)}
+/* ---------- report ---------- */
+.paper{font-size:14px;line-height:1.38}
+.paper h1{font-size:18px;margin:0 0 2px}.paper h3{font-size:14.5px;margin:8px 0 3px;padding-bottom:1px;border-bottom:1.5px solid #1b5e20;color:#1b5e20}
+.paper table{width:100%;border-collapse:collapse}.paper td,.paper th{border:1px solid #999;padding:2px 5px;vertical-align:top;font-size:12.5px}
+.paper th{background:#e6efe6}
+.paper .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.paper .pinfo{display:grid;grid-template-columns:1.6fr 1fr 1fr;gap:8px;margin:4px 0}
+.paper .pinfo label{font-size:12px;margin:0;font-weight:600}.paper .pinfo input{min-height:34px;padding:2px 8px;font-size:14px;color:#000;background:#fff;border:1px solid #888;border-radius:6px}
+.paper .res{border:2px solid #1b5e20;border-radius:6px;padding:4px 10px;text-align:center;font-size:15px}.paper .res b{font-size:22px}
+.paper .steps div{font-size:12.5px;padding:1px 0}
+.paper .disc{font-size:11.5px;border:1.5px solid #8a6d00;background:#fff8d6;padding:4px 8px;border-radius:4px;margin-top:6px}
+.paper svg{width:130px;height:auto}
+.paper .small{font-size:11.5px;color:#333}
+@page{size:A4;margin:10mm 11mm}
+@media print{
+  body{background:#fff;padding:0;font-size:12px}
+  header.top,#calcView,#disc-bar,#ack,.noprint{display:none!important}
+  #reportView{display:block!important;max-width:none;padding:0;margin:0}
+  #reportView .paper{border:0;padding:0;border-radius:0}
+  .paper{font-size:11.5px;line-height:1.3}
+  .paper td,.paper th{font-size:10.5px;padding:1px 4px}
+  .paper .pinfo input{border:0;border-bottom:1px solid #888;border-radius:0;min-height:0;padding:0 2px}
+  .paper h3{font-size:12.5px;margin:6px 0 2px;break-after:avoid}
+  .paper .steps div{font-size:10.8px}
+  .paper svg{width:105px}
+  .paper .disc{font-size:10px}
+  .paper,.paper *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <h1>คำนวณ last ten blows</h1>
+  <div class="tabs" role="tablist">
+    <button role="tab" id="tabCalc" aria-selected="true">คำนวณ</button>
+    <button role="tab" id="tabRep" aria-selected="false">รายการคำนวณ</button>
+  </div>
+</header>
+
+<main id="calcView">
+
+<section class="card" id="cPile">
+  <h2><span class="n">1</span>เสาเข็ม</h2>
+  <label for="pileType">ชนิดเสาเข็ม</label>
+  <select id="pileType"></select>
+  <label for="secKind">รูปหน้าตัด</label>
+  <select id="secKind"></select>
+  <label for="secStd">ขนาด <span class="badge">ควรตรวจสอบ</span></label>
+  <select id="secStd"></select>
+  <div class="hint" id="secNote"></div>
+  <div class="row" id="dimRow"></div>
+  <div class="secsvg" id="secSvg"></div>
+  <div class="kv"><span>พื้นที่หน้าตัด A</span><span id="outA">–</span></div>
+  <label for="L">ความยาวเสาเข็ม L (ม.)</label>
+  <input type="number" id="L" inputmode="decimal" step="any" min="0">
+  <div id="fcBox">
+    <label for="fc">กำลังอัดคอนกรีต f'c (MPa) <span class="badge">ควรตรวจสอบ</span></label>
+    <input type="number" id="fc" inputmode="decimal" step="any" min="0">
+    <div class="hint">ใช้กำลังอัดทรงกระบอก (cylinder) หน่วย MPa — ถ้ามีเฉพาะค่า cube/ksc ให้แปลงก่อน (1 MPa ≈ 10.2 ksc)</div>
+  </div>
+  <div class="kv"><span>Ep (โมดูลัสยืดหยุ่น)</span><span id="outE">–</span></div>
+  <div class="hint" id="eNote"></div>
+  <label class="chk"><input type="checkbox" id="wpAuto"> คำนวณน้ำหนักเสาเข็ม Wp อัตโนมัติ (A × L × ความหนาแน่น)</label>
+  <label for="wpMan">น้ำหนักเสาเข็ม Wp (ตัน)</label>
+  <input type="number" id="wpMan" inputmode="decimal" step="any" min="0">
+  <label for="wcap">น้ำหนักหมวกครอบ/หัวตอก (ตัน) <span class="badge">ควรตรวจสอบ</span></label>
+  <input type="number" id="wcap" inputmode="decimal" step="any" min="0">
+  <div class="hint">สูตรส่วนใหญ่ใช้ Wp รวมหมวกครอบ (helmet/cap) ด้วย — รวมใน Wp ที่ใช้คำนวณ</div>
+  <div class="kv"><span>Wp ที่ใช้คำนวณ</span><span id="outWp">–</span></div>
+</section>
+
+<section class="card" id="cHam">
+  <h2><span class="n">2</span>ค้อนและลูกตุ้ม</h2>
+  <label for="hammer">ชนิดค้อน</label>
+  <select id="hammer"></select>
+  <label for="wrSel">น้ำหนักลูกตุ้ม Wr</label>
+  <select id="wrSel"></select>
+  <input type="number" id="wrCustom" inputmode="decimal" step="any" min="0" placeholder="กรอกน้ำหนักลูกตุ้ม (ตัน)" style="margin-top:8px">
+</section>
+
+<section class="card" id="cLift">
+  <h2><span class="n">3</span>ระยะยก H และน้ำหนักบรรทุก</h2>
+  <label for="h">ระยะยก H (ม.)</label>
+  <input type="number" id="h" inputmode="decimal" step="any" min="0">
+  <div class="tip" id="liftTip"></div>
+  <div class="kv"><span>พลังงานค้อน Eh = Wr × H</span><span id="outEh">–</span></div>
+  <label for="Qa">น้ำหนักบรรทุกปลอดภัย Qa ที่ต้องการ (ตัน)</label>
+  <input type="number" id="Qa" inputmode="decimal" step="any" min="0">
+</section>
+
+<section class="card" id="cEq">
+  <h2><span class="n">4</span>สมการ Driving Formula</h2>
+  <label for="eq">เลือกสมการ</label>
+  <select id="eq"></select>
+  <div class="formula" id="eqFormula" style="margin-top:10px"></div>
+  <ul class="vars" id="eqVars"></ul>
+  <div class="hint" id="eqSrc"></div>
+  <label for="fs">Factor of Safety (FS) <button class="tipbtn" data-tip="fsTip" aria-label="คำแนะนำ FS">ⓘ</button></label>
+  <input type="number" id="fs" inputmode="decimal" step="any" min="0">
+  <div class="hint" id="fsRange"></div>
+  <div class="tip" id="fsTip" hidden></div>
+  <div class="pwarn" id="fsWarn" hidden></div>
+</section>
+
+<section class="card" id="cPar">
+  <h2><span class="n">5</span>พารามิเตอร์ของสมการนี้</h2>
+  <div id="parBox"></div>
+  <div class="btnrow">
+    <button class="btn sec" id="btnRec">ใช้ค่าแนะนำทั้งหมด</button>
+    <button class="btn sec" id="btnReset">รีเซ็ตทั้งหมด</button>
+  </div>
+</section>
+
+<section class="card" id="cRes">
+  <h2><span class="n">6</span>ผลลัพธ์</h2>
+  <div id="resBox"></div>
+  <div class="btnrow">
+    <button class="btn" id="btnCmp">เปรียบเทียบทุกสมการ</button>
+    <button class="btn sec" id="btnToRep">ดูรายการคำนวณ / พิมพ์</button>
+  </div>
+  <div id="cmpBox" class="scroll" style="margin-top:12px" hidden></div>
+</section>
+
+</main>
+
+<main id="reportView">
+  <div class="btnrow noprint" style="margin:0 0 10px">
+    <button class="btn" id="btnPrint">พิมพ์ / บันทึก PDF</button>
+    <button class="btn sec" id="btnBack">กลับไปหน้าคำนวณ</button>
+  </div>
+  <div class="paper" id="paper"></div>
+</main>
+
+<div id="disc-bar" role="note" aria-label="ข้อสงวนสิทธิ์"><div class="t" id="discText"></div></div>
+
+<div id="ack" role="dialog" aria-modal="true" aria-labelledby="ackT">
+  <div class="box">
+    <h2 id="ackT">ข้อสงวนสิทธิ์ (Disclaimer)</h2>
+    <p id="ackText"></p>
+    <label class="chk"><input type="checkbox" id="ackChk"> รับทราบ และยอมรับเงื่อนไขข้างต้น</label>
+    <button class="btn block" id="ackBtn" disabled>เริ่มใช้งาน</button>
+  </div>
+</div>
+
+<script>
+/* ======================================================================
+   CORE-BEGIN  (ส่วนคำนวณล้วน ไม่แตะ DOM — tests/test.js ดึงส่วนนี้ไปทดสอบด้วย node)
+   ระบบหน่วยภายใน (SI): ความยาว = m, แรง = kN, พลังงาน = kN·m (= kJ), ความเค้น/โมดูลัส = kPa
+   ทุกการแปลงหน่วยต้องผ่านอ็อบเจ็กต์ U เท่านั้น
+   ====================================================================== */
+const G = 9.80665;                       // m/s² (1 tf = 9.80665 kN)
+const U = {                              // ---- ฟังก์ชันแปลงหน่วย ----
+  tf_to_kN:  t => t * G,                 // ตัน(แรง/น้ำหนัก) -> kN
+  kN_to_tf:  k => k / G,
+  m_to_mm:   m => m * 1000,
+  mm_to_m:   mm => mm / 1000,
+  m_to_in:   m => m / 0.0254,
+  in_to_m:   i => i * 0.0254,
+  m_to_ft:   m => m / 0.3048,
+  kNm_to_ftkip: e => e / 1.3558179483,   // kN·m -> ft-kip  (1 ft-kip = 1.3558179 kN·m)
+  ftkip_to_kNm: e => e * 1.3558179483,
+  kN_to_kip: k => k / 4.4482216153,      // kN -> kip
+  kip_to_kN: k => k * 4.4482216153,
+  MPa_to_kPa: p => p * 1000,
+  mm2_to_m2: a => a * 1e-6,
+  cm2_to_m2: a => a * 1e-4
+};
+const RHO = { concrete: 2.4, steel: 7.85 };   // t/m³  (ความหนาแน่นสำหรับประมาณ Wp)
+
+/* ---------- ตารางเสาเข็ม (แก้ไขได้) ---------- */
+/* !!! VERIFY: ขนาด/พื้นที่ด้านล่างเป็นค่าประมาณ ต้องตรวจกับแคตตาล็อกผู้ผลิต/มาตรฐาน (มอก., JIS) ก่อนใช้งานจริง !!!
+   หน่วยมิติ = มม. ; A (ถ้ามี) = ซม.² ; kgm = กก./ม. (เหล็ก)  */
+const PILE_TYPES = {
+  pc:    { label: 'คอนกรีตอัดแรง (Prestressed concrete)', mat: 'concrete', fc: 50, sections: ['sq', 'ci'] },
+  rc:    { label: 'คอนกรีตหล่อสำเร็จ (Precast RC)',        mat: 'concrete', fc: 30, sections: ['sq', 'ci'] },
+  steel: { label: 'เหล็กรูปพรรณ (Steel)',                  mat: 'steel',    fc: 0,  sections: ['st'] }
+};
+const SECTIONS = {
+  sq: { label: 'คอนกรีตสี่เหลี่ยมจัตุรัส', draw: 'sq', fields: ['B'],
+    std: [ // VERIFY
+      { name: '□ 0.18 × 0.18 ม.', B: 180 }, { name: '□ 0.22 × 0.22 ม.', B: 220 }, { name: '□ 0.25 × 0.25 ม.', B: 250 },
+      { name: '□ 0.30 × 0.30 ม.', B: 300 }, { name: '□ 0.35 × 0.35 ม.', B: 350 }, { name: '□ 0.40 × 0.40 ม.', B: 400 }
+    ] },
+  ci: { label: 'คอนกรีตรูปตัว I', draw: 'I', fields: ['B', 'D', 'tw', 'tf'],
+    std: [ // VERIFY: B=ความกว้างปีก D=ความลึก tw=ความหนาเอว tf=ความหนาปีก (มม.) — ค่าประมาณ
+      { name: 'I-18 (180×180)', B: 180, D: 180, tw: 70, tf: 40 }, { name: 'I-22 (220×220)', B: 220, D: 220, tw: 80, tf: 45 },
+      { name: 'I-26 (260×260)', B: 260, D: 260, tw: 90, tf: 50 }, { name: 'I-30 (300×300)', B: 300, D: 300, tw: 100, tf: 55 },
+      { name: 'I-35 (350×350)', B: 350, D: 350, tw: 110, tf: 60 }, { name: 'I-40 (400×400)', B: 400, D: 400, tw: 120, tf: 65 }
+    ] },
+  st: { label: 'เหล็กรูปพรรณรูปตัว I/H', draw: 'I', fields: ['B', 'D', 'tw', 'tf'],
+    std: [ // VERIFY: H-beam (JIS/มอก.) B=กว้างปีก D=ลึก tw tf (มม.), A ซม.², kgm กก./ม.
+      { name: 'H-150×150×7×10',  B: 150, D: 150, tw: 7,  tf: 10, A: 40.14,  kgm: 31.5 },
+      { name: 'H-200×200×8×12',  B: 200, D: 200, tw: 8,  tf: 12, A: 63.53,  kgm: 49.9 },
+      { name: 'H-250×250×9×14',  B: 250, D: 250, tw: 9,  tf: 14, A: 92.18,  kgm: 72.4 },
+      { name: 'H-300×300×10×15', B: 300, D: 300, tw: 10, tf: 15, A: 118.5,  kgm: 94.0 },
+      { name: 'H-350×350×12×19', B: 350, D: 350, tw: 12, tf: 19, A: 173.9,  kgm: 137 },
+      { name: 'H-400×400×13×21', B: 400, D: 400, tw: 13, tf: 21, A: 218.7,  kgm: 172 }
+    ] }
+};
+function sectionAreaM2(kind, d) {          // d = {B,D,tw,tf} มม.  -> m²
+  if (SECTIONS[kind].draw === 'sq') return U.mm2_to_m2(d.B * d.B);
+  return U.mm2_to_m2(2 * d.B * d.tf + (d.D - 2 * d.tf) * d.tw);   // ไม่คิด fillet
+}
+function pileEp_kPa(mat, fc) {             // Ec = 4700√f'c (MPa) ; เหล็ก 200 GPa
+  return mat === 'steel' ? U.MPa_to_kPa(200000) : U.MPa_to_kPa(4700 * Math.sqrt(fc));
+}
+
+/* ---------- ค้อน (แก้ไขได้) ---------- */
+/* VERIFY: ช่วง eh ตามที่ผู้ใช้กำหนด; ตำรา (เช่น Das) ให้ช่วงกว้างกว่าเล็กน้อย (drop 0.75–1.0, diesel 0.85–1.0) */
+const HAMMERS = {
+  drop:   { label: 'ค้อนปล่อยตก (drop hammer)', cEnr: 25.4, ehRange: [0.7, 0.9], ehDef: 'b',
+    ehOpts: [{ id: 'a', v: 0.70, label: '0.70 – ค้อนเก่า/สลิงฝืด/ลื่นไถล', note: 'ลดค่าเมื่อสภาพไม่ดี' },
+             { id: 'b', v: 0.80, label: '0.80 – ปกติ', note: 'ค่ากลางของช่วง 0.7–0.9' },
+             { id: 'c', v: 0.90, label: '0.90 – สภาพดี ปล่อยอิสระ', note: 'ใช้เมื่อปล่อยอิสระไม่มีแรงเสียดทาน' }],
+    lift: [0.6, 1.5], liftMax: { concrete: 1.5, steel: 2.0 },
+    liftTxt: 'ค้อนปล่อยตก: ระยะยก 0.6–1.5 ม. (เสาเข็มคอนกรีตไม่ควรเกิน ~1.5 ม. กันเสาเข็มร้าว/แตก; เหล็กได้ถึง ~2.0 ม.) ยิ่งยกต่ำยิ่งลดความเค้นแต่ต้องใช้ลูกตุ้มหนักขึ้น' },
+  single: { label: 'ค้อนไอน้ำ/อากาศ single-acting', cEnr: 2.54, ehRange: [0.7, 0.85], ehDef: 'b',
+    ehOpts: [{ id: 'a', v: 0.70, label: '0.70 – ค้อนเก่า/สภาพไม่ดี', note: '' },
+             { id: 'b', v: 0.75, label: '0.75 – ปกติ', note: '' },
+             { id: 'c', v: 0.85, label: '0.85 – สภาพดี', note: '' }],
+    lift: [0.6, 1.2], liftMax: { concrete: 1.5, steel: 2.0 },
+    liftTxt: 'ค้อน single-acting: ระยะยก (stroke) ถูกกำหนดโดยตัวเครื่อง ประมาณ 0.6–1.2 ม. ให้ใช้ค่า stroke จริงตามสเปกเครื่อง' },
+  double: { label: 'ค้อนไอน้ำ/อากาศ double-acting', cEnr: 2.54, ehRange: [0.8, 0.9], ehDef: 'b',
+    ehOpts: [{ id: 'a', v: 0.80, label: '0.80 – ค้อนเก่า/สภาพไม่ดี', note: '' },
+             { id: 'b', v: 0.85, label: '0.85 – ปกติ', note: '' },
+             { id: 'c', v: 0.90, label: '0.90 – สภาพดี', note: '' }],
+    lift: [0.2, 0.6], liftMax: { concrete: 1.5, steel: 2.0 },
+    liftTxt: 'ค้อน double-acting: stroke สั้น (ประมาณ 0.2–0.6 ม.) ความถี่สูง ใช้ stroke/พลังงานตามสเปกเครื่อง (energy per blow)' },
+  diesel: { label: 'ค้อนดีเซล (diesel hammer)', cEnr: 2.54, ehRange: [0.8, 0.9], ehDef: 'b',
+    ehOpts: [{ id: 'a', v: 0.80, label: '0.80 – ค้อนเก่า/สภาพไม่ดี', note: '' },
+             { id: 'b', v: 0.85, label: '0.85 – ปกติ', note: '' },
+             { id: 'c', v: 0.90, label: '0.90 – สภาพดี', note: '' }],
+    lift: [1.0, 2.5], liftMax: { concrete: 3.0, steel: 3.5 },
+    liftTxt: 'ค้อนดีเซล: ระยะตกเทียบเท่า (equivalent stroke) ประมาณ 1.0–2.5 ม. ขึ้นกับความต้านทานของดิน ควรอ่านจากเครื่อง/บันทึกผู้ผลิต' }
+};
+const WR_LIST = [2.5, 3.5, 4.5, 6, 8];       // ตัน (ปรับได้)
+
+/* ---------- ตารางพารามิเตอร์ (แก้ไขได้) ----------
+   แต่ละพารามิเตอร์: opts(c) = ตัวเลือกสำเร็จรูป, range(c) = ช่วงปกติ (นอกช่วง → เตือนเหลือง),
+   def(c) = id ตัวเลือกเริ่มต้น, tip(c) = คำแนะนำ (ⓘ), unit, verify = ติดป้าย "ควรตรวจสอบ"
+   c = { hammer, pileType, mat }  */
+const PARAMS = {
+  eh: { label: 'ประสิทธิภาพค้อน eh', unit: '–', verify: true,
+    opts: c => HAMMERS[c.hammer].ehOpts, range: c => HAMMERS[c.hammer].ehRange, def: c => HAMMERS[c.hammer].ehDef,
+    tip: c => `เลือกตามชนิดค้อน (${HAMMERS[c.hammer].label}): ช่วงปกติ ${HAMMERS[c.hammer].ehRange[0]}–${HAMMERS[c.hammer].ehRange[1]}. ภาพรวมตามที่กำหนด: ค้อนปล่อยตก 0.7–0.9, single-acting 0.7–0.85, double-acting ≈0.85, ดีเซล 0.8–0.9. ค้อนเก่า/ซ่อมบำรุงไม่ดี/สลิงฝืด ควรลดค่า (ตัวเลือกแรก). ตำราบางเล่ม (เช่น Das) ให้ช่วงกว้างกว่านี้เล็กน้อย — ตรวจกับเกณฑ์โครงการ` },
+  n: { label: 'สัมประสิทธิ์การคืนตัว n (coefficient of restitution)', unit: '–', verify: true,
+    opts: c => [
+      { id: 'wood',  v: 0.28, label: '0.28 – เสาเข็มไม้ (0.25–0.30)', note: 'เสาเข็มไม้' },
+      { id: 'conc',  v: 0.45, label: '0.45 – คอนกรีต มีหมวกครอบ+หมอนรอง (0.40–0.50)', note: 'เสาเข็มคอนกรีตมีหมวกครอบและหมอนรอง' },
+      { id: 'concw', v: 0.40, label: '0.40 – คอนกรีต หมอนรองเก่า/อัดแน่น', note: 'หมอนรองเสื่อมสภาพ ค่าลดลง' },
+      { id: 'steelw',v: 0.35, label: '0.35 – เหล็ก มีหมอนรองไม้ (0.30–0.40)', note: 'เสาเข็มเหล็กมีหมอนรองไม้' },
+      { id: 'steel', v: 0.50, label: '0.50 – เหล็กกระทบเหล็กโดยตรง', note: 'ไม่มีหมอนรอง' }],
+    range: () => [0.25, 0.50], def: c => c.mat === 'steel' ? 'steelw' : 'conc',
+    tip: () => 'เลือกตามชนิดเสาเข็มและหมอนรอง: ไม้ ≈0.25–0.30; คอนกรีตมีหมวก+หมอนรอง ≈0.40–0.50; เหล็กมีหมอนรองไม้ ≈0.30–0.40; เหล็กกระทบเหล็ก ≈0.50. n สูง = พลังงานสูญเสียน้อย ผลคือ Ru มากขึ้น (ไม่ปลอดภัยขึ้น) จึงไม่ควรเลือกสูงเกินจริง ช่วงปกติ 0.25–0.50' },
+  c_enr: { label: 'ค่าคงที่ c ของ ENR', unit: 'มม.', verify: true,
+    opts: () => [
+      { id: 'drop',  v: 25.4, label: '25.4 มม. (1 นิ้ว) – ค้อนปล่อยตก', note: 'ตามสูตรดั้งเดิมสำหรับ drop hammer' },
+      { id: 'steam', v: 2.54, label: '2.54 มม. (0.1 นิ้ว) – ค้อนไอน้ำ/อากาศ/ดีเซล', note: 'ตามสูตรดั้งเดิมสำหรับ steam hammer' }],
+    range: () => [2.54, 25.4], def: c => HAMMERS[c.hammer].cEnr === 25.4 ? 'drop' : 'steam',
+    tip: () => 'c คือค่าที่แทนการสูญเสียพลังงานจากการยุบตัวชั่วคราว: 1 นิ้ว = 25.4 มม. สำหรับค้อนปล่อยตก และ 0.1 นิ้ว = 2.54 มม. สำหรับค้อนไอน้ำ (ตำรา Das, Bowles, Wellington). ระวังหน่วย: ในสูตรนี้ s และ c ต้องเป็นหน่วยเดียวกัน (แอปแปลงเป็นเมตรให้เอง) — ถ้า c ใหญ่กว่า s ที่ต้องการมาก สมการอาจไม่มีคำตอบ' },
+  c_menr: { label: 'ค่าคงที่ c ของ Modified ENR', unit: 'มม.', verify: true,
+    opts: () => [
+      { id: 'std',  v: 2.54, label: '2.54 มม. (0.1 นิ้ว) – ค่ามาตรฐานตามตำรา', note: 'Das / Bowles' },
+      { id: 'big',  v: 25.4, label: '25.4 มม. (1 นิ้ว) – ใช้ในบางตำรา/ค้อนปล่อยตก', note: 'ค่าอนุรักษ์นิยมกว่า' }],
+    range: () => [2.54, 25.4], def: () => 'std',
+    tip: () => 'Modified ENR ตามตำรา Das ใช้ c = 0.1 นิ้ว (2.54 มม.) ส่วน 1 นิ้ว (25.4 มม.) เป็นค่าของ ENR เดิมสำหรับค้อนปล่อยตก เลือกให้ตรงกับตำรา/เกณฑ์ที่ใช้อ้างอิง' },
+  C1: { label: 'Hiley C1 – การหดตัวชั่วคราวของหมวกครอบ+หัวเสาเข็ม', unit: 'มม.', verify: true,
+    opts: () => {
+      const g = [['A', 'คอนกรีต + หมอนรองไม้/ไม้อัดหนา 75–100 มม.', [2.5, 5.0, 7.5]],
+                 ['B', 'เหล็ก + หมอนรองไม้บาง', [1.0, 2.0, 3.0]],
+                 ['C', 'ไม่มีหมอนรอง (เหล็กต่อเหล็ก)', [0.5, 1.0, 1.5]]];
+      const lv = ['ต่ำ', 'ปานกลาง', 'สูง']; const o = [];
+      g.forEach(x => x[2].forEach((v, i) => o.push({ id: x[0] + i, v, label: `${v.toFixed(1)} – ${x[1]} / ความเค้นตอก${lv[i]}`, note: `${x[1]}; ระดับความเค้น${lv[i]}` })));
+      return o; },
+    range: () => [0.5, 10], def: c => c.mat === 'steel' ? 'B1' : 'A1',
+    tip: () => 'C1 ขึ้นกับชนิดหมอนรองและระดับความเค้นขณะตอก (ตอกเบา/ปานกลาง/ตอกหนัก ≈ 3.5/7/10.5 MPa ที่หัวเสาเข็ม): หมอนรองหนา-อ่อน และความเค้นสูง → C1 มาก. ค่าในตารางนี้เป็นค่าประมาณตามแนวตำรา (Chellis/Hiley, Tomlinson, Bowles) ต้องตรวจกับตารางต้นฉบับ. ช่วงปกติ 0.5–10 มม.' },
+  C2: { label: 'Hiley C2 – การหดตัวชั่วคราวของตัวเสาเข็ม', unit: 'มม.', verify: false,
+    opts: () => [{ id: 'auto', v: 'auto', label: 'คำนวณอัตโนมัติ  C2 = Ru·L/(A·E)', note: 'คำนวณจาก Ru ที่ต้องการ' }],
+    range: () => [0, 40], def: () => 'auto',
+    tip: () => 'ปกติใช้คำนวณอัตโนมัติ C2 = Ru·L/(A·E) (Ru = Qa×FS, ตัวเสาเข็มหดตัวแบบยืดหยุ่น). ถ้ามีค่าวัดจริง (เช่นจากกราฟ rebound) เลือก "กรอกเอง" ได้ ช่วงปกติ ≈ 0–40 มม.' },
+  C3: { label: 'Hiley C3 – quake ของดินที่ปลายเสาเข็ม', unit: 'มม.', verify: true,
+    opts: () => [
+      { id: 'hard', v: 1.0, label: '1.0 – ดินแข็ง/ทรายแน่น/หินผุ', note: 'ดินที่ปลายแข็ง quake น้อย' },
+      { id: 'med',  v: 2.5, label: '2.5 – ดินปานกลาง (≈0.1 นิ้ว ค่าเฉลี่ย)', note: 'ค่าเฉลี่ยทั่วไป' },
+      { id: 'soft', v: 5.0, label: '5.0 – ดินอ่อน/ดินเหนียว', note: 'ดินอ่อน quake มาก' }],
+    range: () => [0, 7.5], def: () => 'med',
+    tip: () => 'C3 คือ quake ของดินใต้ปลายเสาเข็ม: ดินแข็ง/ทรายแน่น ≈ 0–1 มม.; ปานกลาง ≈ 2.5 มม. (0.1 นิ้ว ค่าเฉลี่ยที่ใช้บ่อย); ดินอ่อน/ดินเหนียว ≈ 5 มม. ขึ้นไป. ตำราต่างกันเล็กน้อย — ตรวจกับตารางอ้างอิง. ช่วงปกติ 0–7.5 มม.' },
+  k: { label: 'Pacific Coast (UBC) ค่า k', unit: '–', verify: true,
+    opts: () => [
+      { id: 'steel', v: 0.25, label: '0.25 – เสาเข็มเหล็ก', note: 'เสาเข็มเหล็ก' },
+      { id: 'other', v: 0.10, label: '0.10 – เสาเข็มคอนกรีต/ไม้', note: 'เสาเข็มคอนกรีตหรือไม้' }],
+    range: () => [0.1, 0.25], def: c => c.mat === 'steel' ? 'steel' : 'other',
+    tip: () => 'k ในสูตร (Wr + k·Wp)/(Wr + Wp): เหล็ก 0.25, คอนกรีต/ไม้ 0.10 (ค่านี้คือ n² แบบย่อ). ค่า C (การหดตัวชั่วคราว) ในสูตรนี้คำนวณอัตโนมัติเป็น Ru·L/(A·E) ตามตำรา' },
+  Fe: { label: 'WSDOT ตัวคูณประสิทธิภาพค้อน Fe', unit: '–', verify: true,
+    opts: () => [
+      { id: 'a', v: 0.28, label: '0.28 – ค้อนปล่อยตก (drop hammer)', note: 'อ้างอิงตาราง Feff ใน IDOT 2020 ที่อ้าง WSDOT' },
+      { id: 'd', v: 0.35, label: '0.35 – ค้อนดีเซลแบบ closed-end', note: 'อ้างอิงตาราง Feff ใน IDOT 2020 ที่อ้าง WSDOT' },
+      { id: 'b', v: 0.37, label: '0.37 – ค้อนดีเซลแบบ open-end ตอกเสาเข็มคอนกรีต/ไม้', note: 'อ้างอิงตาราง Feff ใน IDOT 2020 ที่อ้าง WSDOT' },
+      { id: 'c', v: 0.47, label: '0.47 – ค้อนดีเซลแบบ open-end ตอกเสาเข็มเหล็ก/เปลือกเหล็ก', note: 'อ้างอิงตาราง Feff ใน IDOT 2020 ที่อ้าง WSDOT' },
+      { id: 'e', v: 0.55, label: '0.55 – ค้อนไอน้ำ/อากาศ (air/steam)', note: 'อ้างอิงตาราง Feff ใน IDOT 2020 ที่อ้าง WSDOT' }],
+    range: () => [0.28, 0.55], def: c => c.hammer === 'drop' ? 'a' : c.hammer === 'diesel' ? (c.mat === 'steel' ? 'c' : 'b') : 'e',
+    tip: () => 'Fe ในสูตร WSDOT เป็นตัวคูณเชิงประสบการณ์ที่ "รวม" ผลของชนิดค้อนและชนิดเสาเข็มไว้แล้ว จึงมีค่าน้อยกว่า eh (0.28–0.55) ไม่ใช่ประสิทธิภาพ 0.8 ที่ใช้ในสูตรอื่น: ค้อนปล่อยตก 0.28; ไอน้ำ/อากาศ 0.55; ดีเซล open-end 0.37 (เสาเข็มคอนกรีต/ไม้) หรือ 0.47 (เหล็ก); ดีเซล closed-end 0.35. ค่าเหล่านี้มาจากแหล่งรอง (คู่มือ IDOT 2020 ที่อ้าง WSDOT) — ต้องตรวจกับ WSDOT Standard Specifications 6-05.3(12)B / WA-RD 610.1' }
+};
+
+/* ---------- สมการ (แก้ไขได้) ----------
+   calc(X, s) -> { Ru (kN), lines[] }  ; X = ค่าทั้งหมดในหน่วย SI (ดู buildX)
+   fs.def = FS แนะนำ ; fs.range = ช่วงที่นิยมใช้ ; fs.src = ที่มา */
+const SRC_TTI = 'Olson & Flaate (1967) "Pile-driving formulas for railroad trestles"/TTI Report 33-12; ตำรา Das – Principles of Foundation Engineering; Bowles – Foundation Analysis and Design';
+const f = (x, d = 2) => (isFinite(x) ? Number(x).toFixed(d) : '–');
+const EQS = [
+  { id: 'enr', name: 'Engineering News (ENR)',
+    formula: 'Ru = Wr·h / (s + c)',
+    vars: [['Ru', 'กำลังรับน้ำหนักประลัยจากสูตรตอก', 'kN'], ['Wr', 'น้ำหนักลูกตุ้ม', 'kN'], ['h', 'ระยะยก', 'm'], ['s', 'ระยะจมต่อครั้ง (set)', 'm/ครั้ง'], ['c', 'ค่าคงที่ 25.4 มม. (ค้อนปล่อยตก) / 2.54 มม. (ค้อนไอน้ำ)', 'm']],
+    uses: ['c_enr'], fs: { def: 6, range: [6, 6], src: 'FS = 6 ฝังอยู่ในสูตรเดิม (Wellington 1892; Das; Bowles)' },
+    src: 'Wellington (1892) – ' + SRC_TTI + '. หมายเหตุ: สูตรดั้งเดิมไม่มี eh (รวมอยู่ใน FS)',
+    calc(X, s) { const Ru = X.Wr * X.h / (s + X.c_enr);
+      return { Ru, lines: [`Ru = Wr·h/(s+c) = (${f(X.Wr)} kN × ${f(X.h)} m)/(${f(s, 5)} + ${f(X.c_enr, 5)}) m = ${f(Ru, 1)} kN`] }; } },
+  { id: 'hiley', name: 'Hiley',
+    formula: 'Ru = [eh·Eh / (s + (C1+C2+C3)/2)] × (Wr + n²·Wp)/(Wr + Wp)',
+    vars: [['Eh', 'พลังงานค้อน = Wr·h', 'kN·m'], ['eh', 'ประสิทธิภาพค้อน', '–'], ['s', 'ระยะจมต่อครั้ง', 'm/ครั้ง'], ['C1', 'การหดตัวชั่วคราวของหมวกครอบ+หัวเสาเข็ม', 'm'], ['C2', 'การหดตัวชั่วคราวของตัวเสาเข็ม = Ru·L/(A·E)', 'm'], ['C3', 'quake ของดิน', 'm'], ['n', 'สัมประสิทธิ์การคืนตัว', '–'], ['Wr, Wp', 'น้ำหนักลูกตุ้ม, น้ำหนักเสาเข็ม(+หมวก)', 'kN']],
+    uses: ['eh', 'n', 'C1', 'C2', 'C3'], fs: { def: 2.5, range: [2, 3], src: 'Hiley: FS ≈ 2–3 (Bowles; Tomlinson – Pile Design and Construction Practice)' },
+    src: 'Hiley (1930) – Bowles; Tomlinson; ' + SRC_TTI,
+    calc(X, s) { const r = (X.Wr + X.n * X.n * X.Wp) / (X.Wr + X.Wp); const Xn = X.eh * X.E * r; let Ru, C2;
+      if (X.C2 === 'auto') { const a = X.L / (2 * X.A * X.Ep), b = s + (X.C1 + X.C3) / 2; Ru = (-b + Math.sqrt(b * b + 4 * a * Xn)) / (2 * a); C2 = Ru * X.L / (X.A * X.Ep); }
+      else { C2 = X.C2; Ru = Xn / (s + (X.C1 + C2 + X.C3) / 2); }
+      return { Ru, extra: { C2 }, lines: [`ตัวคูณการชน = (Wr+n²Wp)/(Wr+Wp) = (${f(X.Wr)}+${f(X.n * X.n, 4)}×${f(X.Wp)})/(${f(X.Wr)}+${f(X.Wp)}) = ${f(r, 4)}`,
+        `C1 = ${f(X.C1 * 1e3, 2)} มม., C2 = ${f(C2 * 1e3, 2)} มม.${X.C2 === 'auto' ? ' (= Ru·L/(A·E))' : ''}, C3 = ${f(X.C3 * 1e3, 2)} มม.`,
+        `Ru = eh·Eh/(s+(C1+C2+C3)/2) × r = (${f(X.eh)}×${f(X.E, 2)} kN·m)/(${f(s, 5)}+${f((X.C1 + C2 + X.C3) / 2, 5)}) m × ${f(r, 4)} = ${f(Ru, 1)} kN`] }; } },
+  { id: 'menr', name: 'Modified ENR',
+    formula: 'Ru = [eh·Wr·h / (s + c)] × (Wr + n²·Wp)/(Wr + Wp)',
+    vars: [['eh', 'ประสิทธิภาพค้อน', '–'], ['Wr·h', 'พลังงานค้อน', 'kN·m'], ['s', 'ระยะจมต่อครั้ง', 'm/ครั้ง'], ['c', 'ค่าคงที่ 2.54 มม. (0.1 นิ้ว)', 'm'], ['n', 'สัมประสิทธิ์การคืนตัว', '–'], ['Wp', 'น้ำหนักเสาเข็ม(+หมวก)', 'kN']],
+    uses: ['eh', 'n', 'c_menr'], fs: { def: 6, range: [6, 6], src: 'FS = 6 (Das; Bowles)' },
+    src: 'Modified ENR – Das; Bowles; ' + SRC_TTI,
+    calc(X, s) { const r = (X.Wr + X.n * X.n * X.Wp) / (X.Wr + X.Wp); const Ru = X.eh * X.Wr * X.h / (s + X.c_menr) * r;
+      return { Ru, lines: [`ตัวคูณการชน r = (Wr+n²Wp)/(Wr+Wp) = ${f(r, 4)}`, `Ru = eh·Wr·h/(s+c) × r = (${f(X.eh)}×${f(X.E, 2)})/(${f(s, 5)}+${f(X.c_menr, 5)}) × ${f(r, 4)} = ${f(Ru, 1)} kN`] }; } },
+  { id: 'danish', name: 'Danish',
+    formula: 'Ru = eh·Eh / ( s + √( eh·Eh·L / (2·A·Ep) ) )',
+    vars: [['eh·Eh', 'พลังงานที่ค้อนส่งออกจริง', 'kN·m'], ['s', 'ระยะจมต่อครั้ง', 'm/ครั้ง'], ['L', 'ความยาวเสาเข็ม', 'm'], ['A', 'พื้นที่หน้าตัดเสาเข็ม', 'm²'], ['Ep', 'โมดูลัสยืดหยุ่นเสาเข็ม', 'kPa']],
+    uses: [], fs: { def: 3, range: [3, 4], src: 'FS ≈ 3 (Olson & Flaate 1967); บางตำราใช้ 3–4' },
+    info: 'danish', src: 'Danish formula (Sørensen & Hansen 1957) – ' + SRC_TTI,
+    calc(X, s) { const e = X.eh * X.E; const t = Math.sqrt(e * X.L / (2 * X.A * X.Ep)); const Ru = e / (s + t);
+      return { Ru, lines: [`พจน์ยืดหยุ่น √(eh·Eh·L/(2A·Ep)) = √(${f(e, 2)}×${f(X.L, 1)}/(2×${f(X.A, 4)}×${f(X.Ep, 0)})) = ${f(t, 5)} m`, `Ru = eh·Eh/(s+พจน์ยืดหยุ่น) = ${f(e, 2)}/(${f(s, 5)}+${f(t, 5)}) = ${f(Ru, 1)} kN`] }; } },
+  { id: 'janbu', name: 'Janbu',
+    formula: 'Ru = eh·Eh / (Ku·s) ;  Ku = Cd·(1 + √(1 + λ/Cd)) ;  Cd = 0.75 + 0.15·Wp/Wr ;  λ = eh·Eh·L/(A·Ep·s²)',
+    vars: [['Ku', 'ตัวคูณของ Janbu', '–'], ['Cd', 'ค่าสัมประสิทธิ์ขึ้นกับ Wp/Wr (คำนวณอัตโนมัติ)', '–'], ['λ', 'ตัวแปรไร้มิติ', '–'], ['eh·Eh', 'พลังงานที่ค้อนส่งออกจริง', 'kN·m'], ['s', 'ระยะจมต่อครั้ง', 'm/ครั้ง']],
+    uses: [], fs: { def: 3, range: [3, 4], src: 'FS ≈ 3 (Olson & Flaate 1967; Das)' },
+    info: 'janbu', src: 'Janbu (1953) – ' + SRC_TTI,
+    calc(X, s) { const e = X.eh * X.E; const Cd = 0.75 + 0.15 * X.Wp / X.Wr; const lam = e * X.L / (X.A * X.Ep * s * s);
+      const Ku = Cd * (1 + Math.sqrt(1 + lam / Cd)); const Ru = e / (Ku * s);
+      return { Ru, extra: { Cd, lam, Ku }, lines: [`Cd = 0.75 + 0.15·Wp/Wr = 0.75 + 0.15×${f(X.Wp)}/${f(X.Wr)} = ${f(Cd, 4)}`, `λ = eh·Eh·L/(A·Ep·s²) = ${f(lam, 3)}`, `Ku = Cd(1+√(1+λ/Cd)) = ${f(Ku, 4)}`, `Ru = eh·Eh/(Ku·s) = ${f(e, 2)}/(${f(Ku, 4)}×${f(s, 5)}) = ${f(Ru, 1)} kN`] }; } },
+  { id: 'gates', name: 'Gates (FHWA-modified)',
+    formula: 'Rn = 1.75·√E · log₁₀(10·N) − 100     [Rn: kip, E = eh·Eh: ft-lb, N: ครั้ง/นิ้ว, log ฐาน 10]',
+    vars: [['Rn', 'กำลังรับน้ำหนักประลัยระบุ (nominal)', 'kip'], ['E', 'พลังงานที่ค้อนส่งออกจริง (developed energy) = eh·Wr·h', 'ft-lb'], ['N', 'จำนวนครั้งต่อนิ้วของ permanent set = 1/s(นิ้ว)', 'ครั้ง/นิ้ว'], ['log₁₀', 'ลอการิทึมฐาน 10', '–'], ['100', 'ค่าคงที่ของ FHWA (kip)', 'kip']],
+    uses: ['eh'], fs: { def: 3.5, range: [3, 3.6], src: 'Gates ดั้งเดิมแนะนำ FS = 3 (Gates 1957); รูป FHWA-modified ใช้ φ = 0.40 (AASHTO) → FS เทียบเท่า ≈ γ/φ ≈ 1.45/0.40 ≈ 3.6 (ประมาณเอง ควรตรวจสอบ)' },
+    info: 'gates', src: 'FHWA-modified Gates (FHWA GEC-12; LA DOTD FHWA/LA.14/… ; Wisconsin DOT 07-04) — ใช้แทนรูป Gates ดั้งเดิม Ru = 27√(eh·E)(b − log s) ซึ่งยืนยันหน่วยของ a และ b จากต้นฉบับไม่ได้ (ดู README)',
+    calc(X, s) { const Eftlb = U.kNm_to_ftkip(X.eh * X.E) * 1000; const sin = U.m_to_in(s); const N = 1 / sin;
+      const Rk = 1.75 * Math.sqrt(Eftlb) * Math.log10(10 * N) - 100; const Ru = U.kip_to_kN(Rk);
+      return { Ru, extra: { N }, lines: [`E = eh·Eh = ${f(X.eh)}×${f(X.E, 2)} kN·m = ${f(Eftlb, 0)} ft-lb ; s = ${f(s * 1e3, 2)} มม. = ${f(sin, 4)} นิ้ว → N = ${f(N, 2)} ครั้ง/นิ้ว`, `Rn = 1.75·√${f(Eftlb, 0)}·log₁₀(10×${f(N, 2)}) − 100 = ${f(Rk, 1)} kip = ${f(Ru, 1)} kN`] }; } },
+  { id: 'pcubc', name: 'Pacific Coast (UBC)',
+    formula: 'Ru = [eh·Eh·(Wr + k·Wp)/(Wr + Wp)] / (s + C) ;  C = Qa·L/(A·E) = (Ru/FS)·L/(A·E)',
+    vars: [['k', 'เหล็ก 0.25 ; คอนกรีต/ไม้ 0.10', '–'], ['C', 'การหดตัวชั่วคราวของเสาเข็มภายใต้ safe load Qa = Ru/FS', 'm'], ['eh·Eh', 'พลังงานที่ค้อนส่งออกจริง', 'kN·m'], ['s', 'ระยะจมต่อครั้ง', 'm/ครั้ง'], ['L, A, E', 'ความยาว, พื้นที่หน้าตัด, โมดูลัสเสาเข็ม', 'm, m², kPa']],
+    uses: ['eh', 'k'], fs: { def: 4, range: [3, 4], src: 'FS ≈ 4 (Das; Bowles; Lambutan Sinaga pocket ref.) — บางรายงานใช้ 3; ตรวจกับเกณฑ์โครงการ' },
+    src: 'Pacific Coast UBC – ' + SRC_TTI + '; Caltrans Foundation Manual App. E (P = safe load, เทอม P·L/AE). แหล่งอ้างอิงต่างกันเรื่องใช้ Qu หรือ Qa ในเทอม C — แอปใช้ Qa (safe load) ซึ่งยืนยันกับต้นฉบับไม่ได้ ควรตรวจสอบ',
+    calc(X, s) { const r = (X.Wr + X.k * X.Wp) / (X.Wr + X.Wp); const Xn = X.eh * X.E * r; const a = X.L / (X.A * X.Ep * X.fs);
+      const Ru = (-s + Math.sqrt(s * s + 4 * a * Xn)) / (2 * a); const C = Ru * a;
+      return { Ru, extra: { C }, lines: [`r = (Wr+k·Wp)/(Wr+Wp) = (${f(X.Wr)}+${f(X.k, 2)}×${f(X.Wp)})/(${f(X.Wr)}+${f(X.Wp)}) = ${f(r, 4)}`, `C = Qa·L/(A·E) = (Ru/FS)·L/(A·E) = ${f(C * 1e3, 2)} มม. (Qa = ${f(Ru / X.fs, 1)} kN)`, `Ru = eh·Eh·r/(s+C) = ${f(X.eh * X.E, 2)}×${f(r, 4)}/(${f(s, 5)}+${f(C, 5)}) = ${f(Ru, 1)} kN`] }; } },
+  { id: 'navy', name: 'Navy-McKay',
+    formula: 'Ru = Wr·h / [ s·(1 + 0.3·Wp/Wr) ]',
+    vars: [['Wr·h', 'พลังงานค้อน', 'kN·m'], ['s', 'ระยะจมต่อครั้ง', 'm/ครั้ง'], ['Wp/Wr', 'อัตราส่วนน้ำหนักเสาเข็มต่อลูกตุ้ม', '–'], ['0.3', 'ค่าคงที่ในสูตร', '–']],
+    uses: [], fs: { def: 6, range: [6, 6], src: 'FS = 6 (Olson & Flaate 1967; ตำราทั่วไป)' },
+    src: 'Navy-McKay – ' + SRC_TTI + '. หมายเหตุ: ไม่มี eh ในสูตรเดิม; แอปนี้ไม่มีพารามิเตอร์เพิ่ม',
+    calc(X, s) { const q = 1 + 0.3 * X.Wp / X.Wr; const Ru = X.Wr * X.h / (s * q);
+      return { Ru, lines: [`1 + 0.3·Wp/Wr = 1 + 0.3×${f(X.Wp)}/${f(X.Wr)} = ${f(q, 4)}`, `Ru = Wr·h/(s·${f(q, 4)}) = ${f(X.Wr * X.h, 2)}/(${f(s, 5)}×${f(q, 4)}) = ${f(Ru, 1)} kN`] }; } },
+  { id: 'eyt', name: 'Eytelwein (Dutch)',
+    formula: 'Ru = Wr²·h / [ s·(Wr + Wp) ]',
+    vars: [['Wr, Wp', 'น้ำหนักลูกตุ้ม, น้ำหนักเสาเข็ม', 'kN'], ['h', 'ระยะยก', 'm'], ['s', 'ระยะจมต่อครั้ง', 'm/ครั้ง']],
+    uses: [], fs: { def: 6, range: [6, 10], src: 'FS = 6 (Olson & Flaate 1967); สูตร Dutch บางตำราใช้ 6–10' },
+    src: 'Eytelwein/Dutch formula – ' + SRC_TTI + '. หมายเหตุ: ไม่มี eh ในสูตรเดิม',
+    calc(X, s) { const Ru = X.Wr * X.Wr * X.h / (s * (X.Wr + X.Wp));
+      return { Ru, lines: [`Ru = Wr²·h/(s·(Wr+Wp)) = ${f(X.Wr)}²×${f(X.h)}/(${f(s, 5)}×(${f(X.Wr)}+${f(X.Wp)})) = ${f(Ru, 1)} kN`] }; } },
+  { id: 'wsdot', name: 'WSDOT',
+    formula: 'Rndr = 6.6 · Fe · Wr · h · ln(10·N)     [Rndr: kip, Wr: kip, h: ft, N: ครั้ง/นิ้ว, ln = ลอการิทึมธรรมชาติ ฐาน e]',
+    vars: [['Rndr', 'กำลังรับน้ำหนักประลัยจากสูตรตอก', 'kip'], ['Fe', 'ตัวคูณประสิทธิภาพค้อน/เสาเข็ม (0.28–0.55)', '–'], ['Wr', 'น้ำหนักลูกตุ้ม', 'kip'], ['h', 'ระยะยก (stroke)', 'ft'], ['Wr·h', 'พลังงานค้อน (ram weight × stroke)', 'ft-kip'], ['N', 'จำนวนครั้งต่อนิ้ว = 1/s(นิ้ว)', 'ครั้ง/นิ้ว']],
+    uses: ['Fe'], fs: { def: 2.6, range: [2.5, 3], src: 'WSDOT ใช้ LRFD (Allen 2005 แนะนำ φ = 0.55–0.60) ไม่มี FS โดยตรง; FS เทียบเท่า ≈ γ/φ ≈ 1.45/0.55 ≈ 2.6 (ประมาณเอง ควรตรวจสอบ)' },
+    info: 'wsdot', src: 'Allen (2005) WSDOT WA-RD 610.1 "Development of the WSDOT Pile Driving Formula…" (ln แทน log₁₀ ของ Gates); WSDOT Standard Specifications 6-05.3(12)B; ค่า Fe จากตาราง IDOT 2020 ที่อ้าง WSDOT — แหล่งรอง ควรตรวจสอบ',
+    calc(X, s) { const sin = U.m_to_in(s); const N = 1 / sin;
+      const Rk = 6.6 * X.Fe * U.kN_to_kip(X.Wr) * U.m_to_ft(X.h) * Math.log(10 * N); const Ru = U.kip_to_kN(Rk);
+      return { Ru, extra: { N }, lines: [`Wr = ${f(U.kN_to_kip(X.Wr), 2)} kip, h = ${f(U.m_to_ft(X.h), 2)} ft, s = ${f(sin, 4)} นิ้ว → N = ${f(N, 2)} ครั้ง/นิ้ว`, `Rndr = 6.6×${f(X.Fe, 2)}×${f(U.kN_to_kip(X.Wr), 2)}×${f(U.m_to_ft(X.h), 2)}×ln(10×${f(N, 2)}) = ${f(Rk, 1)} kip = ${f(Ru, 1)} kN`] }; } }
+];
+
+/* ---------- สร้าง X (หน่วย SI) จาก input ---------- */
+function resolveParam(id, c, st) {          // st = {sel, custom} | undefined  -> {v, optLabel, note, custom, range}
+  const P = PARAMS[id], opts = P.opts(c), range = P.range(c);
+  let sel = st && st.sel;
+  if (sel === 'custom') return { v: Number(st.custom), optLabel: 'กรอกเอง', note: 'ผู้ใช้กรอกเอง', custom: true, range };
+  let o = opts.find(x => x.id === sel) || opts.find(x => x.id === P.def(c)) || opts[0];
+  return { v: o.v, optLabel: o.label, note: o.note || '', custom: false, range };
+}
+function buildX(inp) {
+  // inp: {Wr_t, h, Qa_t, L, A_m2, Ep_kPa, Wp_t(รวมหมวก), c:{hammer,pileType,mat}, par:{id:{sel,custom}}}
+  const c = inp.c, rp = {}; Object.keys(PARAMS).forEach(id => rp[id] = resolveParam(id, c, inp.par && inp.par[id]));
+  const Wr = U.tf_to_kN(inp.Wr_t), Wp = U.tf_to_kN(inp.Wp_t);
+  const X = { Wr, Wp, h: inp.h, E: Wr * inp.h, L: inp.L, A: inp.A_m2, Ep: inp.Ep_kPa, Qa: U.tf_to_kN(inp.Qa_t),
+    eh: rp.eh.v, n: rp.n.v, c_enr: U.mm_to_m(rp.c_enr.v), c_menr: U.mm_to_m(rp.c_menr.v),
+    C1: U.mm_to_m(rp.C1.v), C2: rp.C2.v === 'auto' ? 'auto' : U.mm_to_m(rp.C2.v), C3: U.mm_to_m(rp.C3.v), k: rp.k.v, Fe: rp.Fe.v, rp };
+  return X;
+}
+
+/* ---------- ตัวแก้สมการ: bisection หา s (m/ครั้ง) ที่ Ru(s) = Rt ----------
+   Ru(s) เป็นฟังก์ชันลดลงตาม s ในทุกสมการ */
+const S_MIN = 1e-7, S_MAX = 1.0;          // m
+function solveS(eq, X, Rt) {
+  const g = s => eq.calc(X, s).Ru - Rt;
+  if (!(Rt > 0)) return { ok: false, reason: 'Ru ที่ต้องการไม่ถูกต้อง (Qa × FS ต้องมากกว่า 0)' };
+  if (!isFinite(g(S_MIN)) || g(S_MIN) < 0) return { ok: false, reason: 'no_solution', text: 'สมการไม่มีคำตอบ: แม้ s → 0 สมการก็ให้ Ru ไม่ถึงค่าที่ต้องการ (พลังงานค้อนไม่พอ หรือพจน์การหดตัว/ค่าคงที่ c ใหญ่เกินไป) — เพิ่มน้ำหนักลูกตุ้ม/ระยะยก หรือลด Qa/FS' };
+  if (g(S_MAX) > 0) return { ok: false, reason: 'too_big', text: 'ค่า s ที่ได้เกิน 1 ม./ครั้ง (พลังงานค้อนเกินความจำเป็นมาก) — ตรวจสอบหน่วยของอินพุต' };
+  let lo = S_MIN, hi = S_MAX;
+  for (let i = 0; i < 200; i++) { const mid = Math.sqrt(lo * hi); if (g(mid) > 0) lo = mid; else hi = mid; if (hi / lo < 1 + 1e-13) break; }
+  const s = Math.sqrt(lo * hi); const r = eq.calc(X, s);
+  return { ok: true, s, Ru: r.Ru, lines: r.lines, extra: r.extra };
+}
+function solveEq(eq, X, fs) {              // Rt = Qa × FS  (ส่ง fs เข้า X เพราะ Pacific Coast ใช้ Qa = Ru/FS)
+  const Rt = X.Qa * fs; X = Object.assign({}, X, { fs }); const r = solveS(eq, X, Rt);
+  r.Rt = Rt; r.fs = fs;
+  if (r.ok) { r.s_mm = U.m_to_mm(r.s); r.ten_mm = 10 * r.s_mm; r.ten_cm = r.ten_mm / 10; r.per25 = 250 / r.s_mm; }
+  return r;
+}
+/* ---------- เปรียบเทียบข้ามสมการ: ตรวจ outlier เทียบค่ามัธยฐานของ s ---------- */
+const OUTLIER_FACTOR = 5;
+function medianOf(a) { const s = [...a].sort((x, y) => x - y), n = s.length; return n ? (n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2) : NaN; }
+function flagOutliers(rows) {            // rows: [{r}] -> เติม row.ratio / row.outlier ; คืนค่ามัธยฐาน s (มม.)
+  const med = medianOf(rows.filter(x => x.r.ok).map(x => x.r.s_mm));
+  rows.forEach(x => { x.ratio = x.r.ok ? x.r.s_mm / med : NaN; x.outlier = x.r.ok && (x.ratio > OUTLIER_FACTOR || x.ratio < 1 / OUTLIER_FACTOR); });
+  return med;
+}
+/* ---------- ตรวจสอบและแจ้งเตือน ---------- */
+function checks(inp, X, res, eq, fs) {
+  const w = [];
+  if (inp.L > 80) w.push(['warn', 'L > 80 ม. – ตรวจว่ากรอกเป็นเมตรหรือไม่']);
+  if (inp.L < 3) w.push(['warn', 'L < 3 ม. – ตรวจว่ากรอกเป็นเมตรหรือไม่']);
+  if (inp.h > 5) w.push(['warn', 'ระยะยก H > 5 ม. – ตรวจหน่วย (ต้องเป็นเมตร ไม่ใช่ ซม./มม.)']);
+  if (inp.h > 0 && inp.h < 0.1) w.push(['warn', 'ระยะยก H < 0.1 ม. – ตรวจหน่วย (ต้องเป็นเมตร)']);
+  if (inp.Wr_t > 30) w.push(['warn', 'น้ำหนักลูกตุ้ม > 30 ตัน – ตรวจหน่วย (ต้องเป็นตัน)']);
+  if (inp.Qa_t > 600) w.push(['warn', 'Qa > 600 ตัน – ตรวจหน่วย (ต้องเป็นตัน ไม่ใช่ kN)']);
+  if (inp.c.mat === 'concrete' && (inp.fc < 20 || inp.fc > 100)) w.push(['warn', "f'c อยู่นอกช่วง 20–100 MPa – ตรวจหน่วย (ต้องเป็น MPa ไม่ใช่ ksc)"]);
+  if (inp.secMaxMm && (inp.secMaxMm < 100 || inp.secMaxMm > 1500)) w.push(['warn', 'ขนาดหน้าตัดนอกช่วง 100–1500 มม. – ตรวจว่ากรอกเป็นมิลลิเมตร']);
+  if (inp.Wr_t < 0.5 * inp.Wp_t) w.push(['warn', 'ลูกตุ้มเบากว่า 0.5 เท่าของน้ำหนักเสาเข็ม – ค้อนเบาเกินไป ประสิทธิภาพการตอกต่ำ (หลักปฏิบัติทั่วไป ควรตรวจกับเกณฑ์โครงการ)']);
+  const fr = eq.fs.range; if (fs < fr[0] || fs > fr[1] * 1.0001) w.push(['warn', `FS = ${f(fs, 2)} อยู่นอกช่วงที่นิยมใช้ของสมการนี้ (${fr[0]}–${fr[1]})`]);
+  if (res && res.ok) {
+    if (res.s_mm < 1) w.push(['warn', `s = ${f(res.s_mm, 2)} มม./ครั้ง น้อยกว่า 1 มม. – ค้อนหรือพารามิเตอร์อาจไม่เหมาะ (เสี่ยงเสาเข็มเสียหายจากตอกหนัก/ใกล้ refusal) ควรเพิ่มพลังงานค้อนหรือทบทวนเกณฑ์`]);
+    else if (res.s_mm < 2) w.push(['info', `s = ${f(res.s_mm, 2)} มม./ครั้ง ค่อนข้างน้อย – ใกล้เกณฑ์ตอกหนัก ตรวจความเค้นขณะตอกด้วย`]);
+    else if (res.s_mm > 25) w.push(['warn', `s = ${f(res.s_mm, 1)} มม./ครั้ง มากกว่า 25 มม. (10 ครั้ง > 25 ซม.) – ค้อนหนัก/พลังงานเกินความต้องการมาก หรืออินพุตผิดหน่วย ค้อนหรือพารามิเตอร์อาจไม่เหมาะ`]);
+    if (eq.id === 'gates') { const N = 25.4 / res.s_mm;
+      if (N < 3 || N > 10) w.push(['warn', `Gates: N = ${f(N, 2)} ครั้ง/นิ้ว อยู่นอกช่วงที่นิยมใช้ 3–10 ครั้ง/นิ้ว (s ≈ 2.5–8.5 มม.) – ผลอาจไม่น่าเชื่อถือ (ยังไม่ยืนยันกับ FHWA)`]);
+      if (U.kN_to_tf(res.Rt) > 300) w.push(['warn', 'Gates: Rn เกิน ~300 ตัน – นอกช่วงที่แบบฟอร์มทั่วไปจำกัดไว้ (ยังไม่ยืนยันกับ FHWA)']); }
+    if (eq.id === 'wsdot') { const N = 25.4 / res.s_mm; if (N < 1) w.push(['warn', `WSDOT: N = ${f(N, 2)} ครั้ง/นิ้ว ต่ำมาก (ln(10N) ใกล้ศูนย์) – นอกช่วงใช้งานของสูตร`]); }
+  }
+  return w;
+}
+/* CORE-END */
+</script>
+
+<script>
+/* =====================  UI  ===================== */
+const $ = id => document.getElementById(id);
+const DISC = 'แอปนี้เป็นเครื่องมือช่วยคำนวณเบื้องต้นด้วยสูตรเชิงประสบการณ์ (driving formula) ซึ่งมีความไม่แน่นอนสูง ผลลัพธ์ไม่ใช่การรับรองกำลังรับน้ำหนักของเสาเข็ม ต้องยืนยันด้วยการทดสอบการรับน้ำหนักจริง (load test) และการพิจารณาของวิศวกรผู้ออกแบบที่ได้รับใบอนุญาต ผู้พัฒนาไม่รับผิดชอบต่อความเสียหายที่เกิดจากการนำผลไปใช้โดยไม่ตรวจสอบ ค่า FS และค่าพารามิเตอร์เริ่มต้นเป็นเพียงค่าแนะนำ ผู้ใช้ต้องตรวจสอบกับมาตรฐานและเกณฑ์ของโครงการ';
+const FS_NOTE = 'FS ของสูตรตอก (driving formula) ไม่ใช่ FS ของผลทดสอบการรับน้ำหนักจริง (load test) — ค่านี้ชดเชยความไม่แน่นอนของสูตรเชิงประสบการณ์ ใช้ตามเกณฑ์ของโครงการ/ผู้ว่าจ้าง';
+const LSKEY = 'ltb_state_v1', ACKKEY = 'ltb_ack_v1';
+
+const DEFAULTS = () => ({
+  pileType: 'pc', secKind: 'sq', secStd: '2', dims: { B: 250, D: 250, tw: 80, tf: 45 },
+  L: 24, fc: 50, wpAuto: true, wpMan: 4, wcap: 0.2,
+  hammer: 'drop', wrSel: '6', wrCustom: 5, h: 1.2, Qa: 60, eq: 'hiley', fs: {}, par: {},
+  proj: { name: '', date: new Date().toISOString().slice(0, 10), by: '' }
+});
+let S = DEFAULTS();
+try { const j = JSON.parse(localStorage.getItem(LSKEY) || 'null'); if (j && typeof j === 'object') S = Object.assign(S, j, { dims: Object.assign(S.dims, j.dims || {}), proj: Object.assign(S.proj, j.proj || {}) }); } catch (e) {}
+function save() { try { localStorage.setItem(LSKEY, JSON.stringify(S)); } catch (e) {} }
+
+const nf = (x, d = 2) => f(x, d);
+const num = v => { const x = parseFloat(v); return isFinite(x) ? x : NaN; };
+
+/* ---- รูปหน้าตัด SVG ---- */
+function sectionSVG(kind, d, mat) {
+  const dr = SECTIONS[kind].draw, W = 220, H = 170, pad = 34, avail = 110;
+  const B = d.B || 0, D = dr === 'sq' ? B : (d.D || 0);
+  if (!(B > 0 && D > 0)) return '';
+  const k = avail / Math.max(B, D), bw = B * k, bd = D * k, x0 = (W - bw) / 2, y0 = 14;
+  const fill = mat === 'steel' ? '#6b7f8f' : '#b9c2b8', stroke = mat === 'steel' ? '#26343f' : '#3d4a3d';
+  let shape;
+  if (dr === 'sq') shape = `<rect x="${x0}" y="${y0}" width="${bw}" height="${bd}" fill="${fill}" stroke="${stroke}" stroke-width="2"/>`;
+  else {
+    const tw = (d.tw || 0) * k, tf = (d.tf || 0) * k, cx = x0 + bw / 2;
+    const p = [[x0, y0], [x0 + bw, y0], [x0 + bw, y0 + tf], [cx + tw / 2, y0 + tf], [cx + tw / 2, y0 + bd - tf], [x0 + bw, y0 + bd - tf], [x0 + bw, y0 + bd], [x0, y0 + bd], [x0, y0 + bd - tf], [cx - tw / 2, y0 + bd - tf], [cx - tw / 2, y0 + tf], [x0, y0 + tf]];
+    shape = `<polygon points="${p.map(q => q.map(v => v.toFixed(1)).join(',')).join(' ')}" fill="${fill}" stroke="${stroke}" stroke-width="2" stroke-linejoin="round"/>`;
+  }
+  const yb = y0 + bd + 14, tx = 'font-size="11" fill="currentColor" text-anchor="middle"';
+  let dims = `<line x1="${x0}" y1="${yb}" x2="${x0 + bw}" y2="${yb}" stroke="currentColor"/><text x="${W / 2}" y="${yb + 13}" ${tx}>B = ${d.B} มม.</text>`;
+  if (dr !== 'sq') dims += `<line x1="${x0 + bw + 8}" y1="${y0}" x2="${x0 + bw + 8}" y2="${y0 + bd}" stroke="currentColor"/><text x="${x0 + bw + 12}" y="${y0 + bd / 2}" font-size="11" fill="currentColor">D=${d.D}</text><text x="${W / 2}" y="${yb + 26}" ${tx}>tw = ${d.tw} , tf = ${d.tf} มม.</text>`;
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="รูปหน้าตัดเสาเข็ม" xmlns="http://www.w3.org/2000/svg">${shape}${dims}</svg>`;
+}
+
+/* ---- อ่านอินพุตเป็น inp ของ CORE ---- */
+function currentSection() {
+  const sec = SECTIONS[S.secKind];
+  if (S.secStd === 'custom') return { d: Object.assign({}, S.dims), A_m2: null, kgm: null, custom: true };
+  const e = sec.std[+S.secStd] || sec.std[0]; return { d: e, A_m2: e.A ? U.cm2_to_m2(e.A) : null, kgm: e.kgm || null, custom: false };
+}
+function gather() {
+  const pt = PILE_TYPES[S.pileType], cs = currentSection();
+  const A_m2 = cs.A_m2 || sectionAreaM2(S.secKind, cs.d);
+  const Ep = pileEp_kPa(pt.mat, S.fc);
+  let Wp_pile = S.wpAuto ? (cs.kgm ? cs.kgm * S.L / 1000 : A_m2 * S.L * RHO[pt.mat]) : S.wpMan;
+  const Wr_t = S.wrSel === 'custom' ? S.wrCustom : +S.wrSel;
+  return { c: { hammer: S.hammer, pileType: S.pileType, mat: pt.mat }, A_m2, Ep_kPa: Ep, L: S.L, fc: S.fc, h: S.h, Qa_t: S.Qa, Wr_t,
+    Wp_pile, Wp_t: Wp_pile + S.wcap, par: S.par, secMaxMm: Math.max(cs.d.B || 0, cs.d.D || 0), cs };
+}
+function fsOf(eq) { return S.fs[eq.id] != null ? S.fs[eq.id] : eq.fs.def; }
+const curEq = () => EQS.find(e => e.id === S.eq) || EQS[0];
+
+/* ---- วาดฟอร์มส่วนที่คงที่ ---- */
+function fillStatic() {
+  $('pileType').innerHTML = Object.entries(PILE_TYPES).map(([k, v]) => `<option value="${k}">${v.label}</option>`).join('');
+  $('hammer').innerHTML = Object.entries(HAMMERS).map(([k, v]) => `<option value="${k}">${v.label}</option>`).join('');
+  $('wrSel').innerHTML = WR_LIST.map(w => `<option value="${w}">${w} ตัน</option>`).join('') + '<option value="custom">กรอกเอง</option>';
+  $('eq').innerHTML = EQS.map(e => `<option value="${e.id}">${e.name}</option>`).join('');
+  $('discText').textContent = '⚠ ' + DISC; $('ackText').textContent = DISC;
+}
+function fillSections() {
+  const pt = PILE_TYPES[S.pileType];
+  if (!pt.sections.includes(S.secKind)) { S.secKind = pt.sections[0]; S.secStd = '0'; }
+  $('secKind').innerHTML = pt.sections.map(k => `<option value="${k}">${SECTIONS[k].label}</option>`).join('');
+  $('secKind').value = S.secKind;
+  const sec = SECTIONS[S.secKind];
+  $('secStd').innerHTML = sec.std.map((e, i) => `<option value="${i}">${e.name}</option>`).join('') + '<option value="custom">กรอกเอง</option>';
+  if (S.secStd !== 'custom' && !sec.std[+S.secStd]) S.secStd = '0';
+  $('secStd').value = S.secStd;
+  const lbl = { B: 'B กว้าง (มม.)', D: 'D ลึก (มม.)', tw: 'tw เอว (มม.)', tf: 'tf ปีก (มม.)' };
+  $('dimRow').innerHTML = S.secStd === 'custom' ? sec.fields.map(k => `<div><label>${lbl[k]}</label><input type="number" data-dim="${k}" inputmode="decimal" step="any" min="0" value="${S.dims[k]}"></div>`).join('') : '';
+  $('dimRow').style.flexWrap = 'wrap';
+  $('dimRow').querySelectorAll('input').forEach(i => i.addEventListener('input', () => { S.dims[i.dataset.dim] = num(i.value); update(false); }));
+}
+function setValues() {
+  $('pileType').value = S.pileType; $('hammer').value = S.hammer; $('wrSel').value = S.wrSel; $('eq').value = S.eq;
+  $('L').value = S.L; $('fc').value = S.fc; $('wpAuto').checked = S.wpAuto; $('wpMan').value = S.wpMan; $('wcap').value = S.wcap;
+  $('wrCustom').value = S.wrCustom; $('h').value = S.h; $('Qa').value = S.Qa;
+}
+
+/* ---- พารามิเตอร์ ---- */
+function renderParams() {
+  const eq = curEq(), inp = gather(), c = inp.c, box = $('parBox'); let html = '';
+  const ids = eq.uses;
+  ids.forEach(id => {
+    const P = PARAMS[id], opts = P.opts(c), st = S.par[id], r = resolveParam(id, c, st), isC = r.custom;
+    const selId = isC ? 'custom' : (opts.find(o => o.label === r.optLabel) || opts[0]).id;
+    html += `<div class="param" data-p="${id}"><label>${P.label} (${P.unit})${P.verify ? '<span class="badge">ควรตรวจสอบ</span>' : ''}<button class="tipbtn" data-tip="tip_${id}" aria-label="คำแนะนำ">ⓘ</button></label>
+      <select data-sel="${id}">${opts.map(o => `<option value="${o.id}" ${o.id === selId ? 'selected' : ''}>${o.label}</option>`).join('')}<option value="custom" ${isC ? 'selected' : ''}>กรอกเอง</option></select>
+      <input type="number" data-cus="${id}" inputmode="decimal" step="any" ${isC ? '' : 'hidden'} value="${isC ? (st.custom ?? '') : ''}" placeholder="กรอกค่า (${P.unit})" style="margin-top:8px">
+      <div class="tip" id="tip_${id}" hidden>${P.tip(c)} <b>ช่วงปกติ: ${r.range[0]}–${r.range[1]} ${P.unit}</b></div><div class="pwarn" id="pw_${id}" hidden></div></div>`;
+  });
+  const info = infoHtml(eq, inp);
+  box.innerHTML = (ids.length ? html : '<div class="hint">สมการนี้ไม่มีพารามิเตอร์ที่ต้องเลือกเพิ่ม</div>') + `<div id="infoBox">${info}</div>`;
+  box.querySelectorAll('[data-sel]').forEach(s => s.addEventListener('change', () => {
+    const id = s.dataset.sel; if (s.value === 'custom') { const cur = resolveParam(id, c, S.par[id]); S.par[id] = { sel: 'custom', custom: S.par[id]?.custom ?? cur.v }; } else S.par[id] = { sel: s.value };
+    renderParams(); update(false);
+  }));
+  box.querySelectorAll('[data-cus]').forEach(i => i.addEventListener('input', () => { const id = i.dataset.cus; S.par[id] = { sel: 'custom', custom: num(i.value) }; update(false); }));
+  wireTips(box); paramWarns();
+}
+function paramWarns() {
+  const eq = curEq(), inp = gather();
+  eq.uses.forEach(id => { const r = resolveParam(id, inp.c, S.par[id]), el = $('pw_' + id); if (!el) return;
+    const v = r.v; if (v === 'auto') { el.hidden = true; return; }
+    const bad = !isFinite(v) || v < 0 || v < r.range[0] - 1e-9 || v > r.range[1] + 1e-9;
+    el.hidden = !bad; if (bad) el.textContent = !isFinite(v) ? '⚠ ยังไม่ได้กรอกค่า' : `⚠ ค่า ${v} อยู่นอกช่วงปกติ ${r.range[0]}–${r.range[1]} ${PARAMS[id].unit} – ตรวจสอบว่าถูกต้องตามเกณฑ์/ตำรา`; });
+  const c2 = S.par.C2; if (eq.uses.includes('C2') && c2 && c2.sel === 'custom') { /* C2 เลือกกรอกเองก็ตรวจช่วงด้วยด้านบนแล้ว */ }
+}
+function infoHtml(eq, inp) {
+  if (!eq.info) return '';
+  const X = buildX(inp);
+  if (eq.info === 'danish') return `<div class="msg info"><b>Danish:</b> ใช้ eh = ${nf(X.eh)} (จากชนิดค้อน), Eh = ${nf(X.E, 2)} kN·m, A = ${nf(X.A, 4)} m², L = ${nf(X.L, 1)} ม., Ep = ${nf(X.Ep / 1e6, 1)} GPa ที่กรอกไว้แล้ว — <b>ไม่ต้องกรอกเพิ่ม</b></div>`;
+  if (eq.info === 'janbu') return `<div class="msg info"><b>Janbu:</b> Cd คำนวณอัตโนมัติ = 0.75 + 0.15·Wp/Wr = 0.75 + 0.15×${nf(X.Wp)}/${nf(X.Wr)} = <b>${nf(0.75 + 0.15 * X.Wp / X.Wr, 4)}</b> (ไม่ต้องกรอก); λ และ Ku ขึ้นกับ s จึงแก้ด้วย bisection</div>`;
+  const E = X.E;
+  if (eq.info === 'gates') { const Eft = U.kNm_to_ftkip(X.eh * E) * 1000, s5 = U.m_to_in(0.005), R5 = 1.75 * Math.sqrt(Eft) * Math.log10(10 / s5) - 100;
+    return `<div class="msg warn"><b>Gates (FHWA-modified) – ระวังหน่วย:</b> E ต้องเป็น <b>ft-lb</b> (ไม่ใช่ ft-kip), N เป็น <b>ครั้ง/นิ้ว</b>, log เป็น <b>ฐาน 10</b>, ผล Rn เป็น <b>kip</b>. แอปแปลงหน่วยให้เอง.<br>ตัวอย่างจากอินพุตตอนนี้: E = eh·Wr·h = ${nf(X.eh, 2)}×${nf(E, 2)} kN·m = ${nf(Eft, 0)} ft-lb; ถ้า s = 5 มม. = ${nf(s5, 3)} นิ้ว → N = ${nf(1 / s5, 2)} ครั้ง/นิ้ว → Rn = 1.75×√${nf(Eft, 0)}×log₁₀(${nf(10 / s5, 1)}) − 100 = ${nf(R5, 1)} kip = ${nf(U.kip_to_kN(R5), 0)} kN<br>(1 ft-kip = 1.3558 kN·m ; 1 kip = 4.4482 kN ; 1 นิ้ว = 25.4 มม.)<br><b>ช่วงที่ใช้ได้:</b> เป็นสูตรสำหรับ end of drive; ช่วงความต้านทานที่นิยมใช้ประมาณ N = 3–10 ครั้ง/นิ้ว (s ≈ 2.5–8.5 มม.) และ Rn ไม่เกิน ~300 ตัน (จากแบบฟอร์มของ Kentucky Transportation Cabinet — <b>ยังไม่ยืนยันกับ FHWA</b>). นอกช่วงนี้ หรือเมื่อ N น้อยมาก สูตรจะให้ Rn ต่ำ/ติดลบ ไม่ควรเชื่อถือ</div>`; }
+  if (eq.info === 'wsdot') { const s5 = U.m_to_in(0.005), R5 = 6.6 * X.Fe * U.kN_to_kip(X.Wr) * U.m_to_ft(X.h) * Math.log(10 / s5);
+    return `<div class="msg warn"><b>WSDOT – ระวังหน่วย:</b> Wr เป็น <b>kip</b>, h เป็น <b>ft</b> (Wr·h = ft-kip), N เป็น <b>ครั้ง/นิ้ว</b>, ใช้ <b>ln</b> (ฐาน e — ต่างจาก Gates ที่ใช้ log ฐาน 10), ผลเป็น kip. แอปแปลงหน่วยให้เอง.<br>ตัวอย่างจากอินพุตตอนนี้: Wr = ${nf(U.kN_to_kip(X.Wr), 2)} kip, h = ${nf(U.m_to_ft(X.h), 2)} ft, Fe = ${nf(X.Fe, 2)}; ถ้า s = 5 มม. → N = ${nf(1 / s5, 2)} ครั้ง/นิ้ว → Rndr = 6.6×${nf(X.Fe, 2)}×${nf(U.kN_to_kip(X.Wr), 2)}×${nf(U.m_to_ft(X.h), 2)}×ln(${nf(10 / s5, 1)}) = ${nf(R5, 1)} kip = ${nf(U.kip_to_kN(R5), 0)} kN<br>(ถ้า s > 254 มม. ln(10N) จะติดลบ — ไม่ใช่ช่วงใช้งานของสูตร)</div>`; }
+  return '';
+}
+function wireTips(root) { root.querySelectorAll('.tipbtn').forEach(b => b.onclick = e => { e.preventDefault(); const t = $(b.dataset.tip); if (t) t.hidden = !t.hidden; }); }
+
+/* ---- สมการ ---- */
+function renderEq() {
+  const eq = curEq();
+  $('eqFormula').textContent = eq.formula;
+  $('eqVars').innerHTML = eq.vars.map(v => `<li><b>${v[0]}</b> = ${v[1]} <span class="hint">[${v[2]}]</span></li>`).join('');
+  $('eqSrc').textContent = 'ที่มา: ' + eq.src;
+  $('fs').value = fsOf(eq);
+  $('fsRange').textContent = `ช่วงที่นิยมใช้: ${eq.fs.range[0] === eq.fs.range[1] ? eq.fs.range[0] : eq.fs.range[0] + '–' + eq.fs.range[1]} | ค่าแนะนำ: ${eq.fs.def} | ที่มา: ${eq.fs.src}`;
+  $('fsTip').innerHTML = FS_NOTE + '<br><b>ติดป้ายควรตรวจสอบ:</b> ค่า FS แต่ละสมการอ้างอิงตำรา/รายงานเปรียบเทียบสูตรตอก — ตรวจกับเกณฑ์โครงการก่อนใช้';
+  wireTips($('cEq'));
+}
+
+/* ---- ผลลัพธ์ ---- */
+function renderResult() {
+  const eq = curEq(), inp = gather(), X = buildX(inp), fs = fsOf(eq);
+  const bad = !(inp.A_m2 > 0 && inp.L > 0 && inp.h > 0 && inp.Wr_t > 0 && inp.Qa_t > 0 && fs > 0 && inp.Ep_kPa > 0 && inp.Wp_t >= 0);
+  const pbad = eq.uses.some(id => { const v = X.rp[id].v; return v !== 'auto' && !isFinite(v); });
+  if (bad || pbad) { $('resBox').innerHTML = '<div class="msg warn">กรอกข้อมูลให้ครบ (ค่าต้องมากกว่า 0) เพื่อคำนวณ</div>'; return null; }
+  const r = solveEq(eq, X, fs), w = checks(inp, X, r, eq, fs); let h = '';
+  const kv = (a, b) => `<div class="kv"><span>${a}</span><span>${b}</span></div>`;
+  h += kv('Qa', `${nf(inp.Qa_t, 1)} ตัน = ${nf(X.Qa, 1)} kN`) + kv('FS', nf(fs, 2)) + kv('Ru = Qa × FS', `${nf(r.Rt, 1)} kN = ${nf(U.kN_to_tf(r.Rt), 1)} ตัน`);
+  if (r.ok) {
+    h = `<div class="big"><div class="lab">ระยะจมต่อ 10 ครั้งสุดท้าย (${eq.name})</div><div class="val">${nf(r.ten_mm, 1)} มม.</div><div class="sub">= ${nf(r.ten_cm, 2)} ซม.</div></div>
+      <div class="stats"><div class="stat"><b>${nf(r.s_mm, 2)} มม.</b><span>s ต่อครั้ง</span></div><div class="stat"><b>${nf(r.per25, 1)}</b><span>ครั้ง ต่อ 25 ซม.</span></div></div>` + h;
+    h += kv('Ru ตรวจกลับที่ s นี้', `${nf(r.Ru, 1)} kN`);
+    if (r.extra && r.extra.C2 != null) h += kv('C2 (คำนวณอัตโนมัติ)', `${nf(r.extra.C2 * 1e3, 2)} มม.`);
+    if (r.extra && r.extra.Cd != null) h += kv('Cd / Ku', `${nf(r.extra.Cd, 4)} / ${nf(r.extra.Ku, 4)}`);
+  } else w.unshift(['bad', r.text || r.reason]);
+  w.push(['info', FS_NOTE]);
+  h += w.map(m => `<div class="msg ${m[0]}">${m[0] === 'bad' ? '⛔ ' : m[0] === 'warn' ? '⚠ ' : 'ℹ '}${m[1]}</div>`).join('');
+  $('resBox').innerHTML = h; return { r, X, inp, eq, fs, w };
+}
+function compareAll() {
+  const inp = gather(), X = buildX(inp);
+  return EQS.map(eq => { const fs = fsOf(eq); const r = solveEq(eq, X, fs); return { eq, fs, r, w: checks(inp, X, r, eq, fs) }; });
+}
+function cmpTable(rows) {
+  const med = flagOutliers(rows); const outs = rows.filter(x => x.outlier);
+  const body = rows.map(x => x.r.ok ? `<tr${x.outlier ? ' style="background:#fff4c2;color:#5c4400"' : ''}><td>${x.eq.name}${x.outlier ? ' ⚠' : ''}</td><td>${nf(x.fs, 2)}</td><td>${nf(x.r.Rt, 0)}</td><td>${nf(x.r.s_mm, 2)}</td><td><b>${nf(x.r.ten_cm, 2)}</b></td><td>${nf(x.r.per25, 1)}</td></tr>`
+      : `<tr><td>${x.eq.name}</td><td>${nf(x.fs, 2)}</td><td>${nf(x.r.Rt, 0)}</td><td colspan="3" style="text-align:center">ไม่มีคำตอบ</td></tr>`).join('');
+  const warn = outs.map(x => `<div class="msg warn">⚠ ${x.eq.name}: s = ${nf(x.r.s_mm, 2)} มม. ต่างจากค่ามัธยฐาน (${nf(med, 2)} มม.) ${x.ratio > 1 ? nf(x.ratio, 1) + ' เท่า' : 'เหลือ 1/' + nf(1 / x.ratio, 1)} (เกิน ${OUTLIER_FACTOR} เท่า) – ตรวจสอบพารามิเตอร์/หน่วยของสมการนี้ก่อนใช้ค่า</div>`).join('');
+  const noSol = rows.filter(x => !x.r.ok).map(x => x.eq.name);
+  return `<table class="cmp"><thead><tr><th>สมการ</th><th>FS</th><th>Ru (kN)</th><th>s (มม.)</th><th>10 ครั้ง (ซม.)</th><th>ครั้ง/25ซม.</th></tr></thead><tbody>${body}</tbody></table>` +
+    `<div class="hint">ค่ามัธยฐาน s ของสมการที่มีคำตอบ = ${nf(med, 2)} มม.${noSol.length ? ' | ไม่มีคำตอบ: ' + noSol.join(', ') : ''}</div>` + warn;
+}
+
+/* ---- ข้อมูลเสาเข็ม/ค้อน ---- */
+function renderInfo() {
+  const inp = gather(), pt = PILE_TYPES[S.pileType], cs = inp.cs;
+  $('secSvg').innerHTML = sectionSVG(S.secKind, cs.d, pt.mat);
+  $('outA').textContent = `${nf(inp.A_m2 * 1e4, 1)} ซม.² (${nf(inp.A_m2, 5)} ม.²)`;
+  $('fcBox').hidden = pt.mat === 'steel';
+  $('outE').textContent = pt.mat === 'steel' ? '200 GPa (เหล็ก)' : `Ec = 4700√f'c = ${nf(inp.Ep_kPa / 1e6, 2)} GPa`;
+  $('eNote').textContent = pt.mat === 'steel' ? 'เหล็กใช้ E = 200 GPa' : "Ec = 4700√f'c (MPa) ตาม ACI 318";
+  $('wpMan').disabled = S.wpAuto; $('wpMan').style.opacity = S.wpAuto ? .5 : 1;
+  $('outWp').textContent = `${nf(inp.Wp_t, 2)} ตัน (เสาเข็ม ${nf(inp.Wp_pile, 2)} + หมวก ${nf(S.wcap, 2)})`;
+  $('wrCustom').hidden = S.wrSel !== 'custom';
+  $('outEh').textContent = `${nf(inp.Wr_t * G * inp.h, 1)} kN·m (${nf(inp.Wr_t * inp.h, 2)} ตัน-ม.)`;
+  const H = HAMMERS[S.hammer], mx = H.liftMax[pt.mat];
+  let t = `<b>ระยะยกแนะนำเบื้องต้น ${H.lift[0]}–${H.lift[1]} ม.</b> – ${H.liftTxt} <span class="badge">ควรตรวจสอบ</span>`;
+  if (S.h && (S.h < H.lift[0] || S.h > H.lift[1])) t += `<div class="pwarn">⚠ H = ${S.h} ม. อยู่นอกช่วงแนะนำของชนิดค้อนนี้</div>`;
+  if (S.h > mx) t += `<div class="pwarn">⚠ H เกิน ${mx} ม. – เสี่ยงเสาเข็ม${pt.mat === 'steel' ? 'เหล็กเสียรูป/หัวบิ่น' : 'คอนกรีตร้าว/แตกจากความเค้นดึง'}</div>`;
+  $('liftTip').innerHTML = t;
+  $('secNote').textContent = 'ขนาดมาตรฐานเป็นค่าประมาณ (ติดป้ายควรตรวจสอบ) — เลือก "กรอกเอง" เพื่อใส่ขนาดจริงจากแคตตาล็อก';
+}
+function paramNote() { const eq = curEq(); const fs = fsOf(eq); const el = $('fsWarn'); const fr = eq.fs.range; const bad = fs < fr[0] || fs > fr[1] * 1.0001; el.hidden = !bad; if (bad) el.textContent = `⚠ FS ${nf(fs, 2)} อยู่นอกช่วงที่นิยมใช้ (${fr[0]}–${fr[1]}) – ถ้าใช้ตามเกณฑ์โครงการให้ตรวจสอบกับผู้ว่าจ้าง`; }
+
+function update(rebuildParams) {
+  const inp0 = gather(); renderInfo(); paramNote();
+  if (rebuildParams) renderParams(); else { const ib = $('infoBox'); if (ib) ib.innerHTML = infoHtml(curEq(), inp0); paramWarns(); }
+  renderResult(); if (!$('cmpBox').hidden) { $('cmpBox').innerHTML = cmpTable(compareAll()); }
+  save();
+}
+
+/* ---- รายการคำนวณ (print) ---- */
+function renderReport() {
+  const eq = curEq(), inp = gather(), X = buildX(inp), fs = fsOf(eq), pt = PILE_TYPES[S.pileType], cs = inp.cs;
+  const r = solveEq(eq, X, fs), w = checks(inp, X, r, eq, fs), rows = compareAll(), H = HAMMERS[S.hammer];
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const params = eq.uses.map(id => { const P = PARAMS[id], p = X.rp[id]; const v = p.v === 'auto' ? 'คำนวณอัตโนมัติ' : `${p.v} ${P.unit}`;
+    return `<tr><td>${P.label}</td><td><b>${v}</b></td><td>${esc(p.optLabel)}${p.note ? ' — ' + esc(p.note) : ''}${P.verify ? ' (ควรตรวจสอบ)' : ''}</td></tr>`; }).join('');
+  const dimTxt = SECTIONS[S.secKind].fields.map(k => `${k}=${cs.d[k]}`).join(', ');
+  const steps = [`① Ru = Qa × FS = ${nf(inp.Qa_t, 1)} ตัน × ${nf(fs, 2)} = ${nf(r.Rt / G, 1)} ตัน = ${nf(r.Rt, 1)} kN (Qa = ${nf(X.Qa, 1)} kN)`,
+    `② Wr = ${nf(inp.Wr_t, 2)} ตัน = ${nf(X.Wr, 2)} kN ; H = ${nf(inp.h, 2)} ม. ; Eh = Wr·H = ${nf(X.E, 2)} kN·m ; Wp = ${nf(inp.Wp_t, 2)} ตัน = ${nf(X.Wp, 2)} kN`,
+    `③ A = ${nf(X.A, 5)} ม.² ; L = ${nf(X.L, 1)} ม. ; Ep = ${nf(X.Ep / 1e6, 2)} GPa`,
+    ...(r.ok ? r.lines.map((l, i) => `④.${i + 1} ${l}`) : [`④ ${r.text || r.reason}`]),
+    ...(r.ok ? [`⑤ แก้สมการ (bisection) ได้ s = ${nf(r.s_mm, 3)} มม./ครั้ง → 10 × s = ${nf(r.ten_mm, 1)} มม. = ${nf(r.ten_cm, 2)} ซม. ; ${nf(r.per25, 1)} ครั้ง/25 ซม.`] : [])];
+  const warns = w.filter(m => m[0] !== 'info').map(m => `<div class="small">⚠ ${esc(m[1])}</div>`).join('') || '<div class="small">ไม่มีข้อแจ้งเตือน</div>';
+  $('paper').innerHTML = `
+  <h1>รายการคำนวณ — ระยะจมหัวเสาเข็มจาก 10 ครั้งสุดท้าย (Last Ten Blows)</h1>
+  <div class="pinfo noprint-hide">
+    <div><label>ชื่องาน</label><input type="text" id="pjName" value="${esc(S.proj.name)}" placeholder="ชื่องาน/โครงการ"></div>
+    <div><label>วันที่</label><input type="date" id="pjDate" value="${esc(S.proj.date)}"></div>
+    <div><label>ผู้คำนวณ</label><input type="text" id="pjBy" value="${esc(S.proj.by)}" placeholder="ชื่อผู้คำนวณ"></div>
+  </div>
+  <div class="two">
+    <div>
+      <h3>1. เสาเข็ม</h3>
+      <div class="two" style="grid-template-columns:auto 1fr;align-items:center"><div>${sectionSVG(S.secKind, cs.d, pt.mat)}</div>
+      <div class="small">${pt.label}<br>${SECTIONS[S.secKind].label}<br>${S.secStd === 'custom' ? 'ขนาดกรอกเอง' : esc(cs.d.name)} (${dimTxt} มม.)<br>A = ${nf(inp.A_m2 * 1e4, 1)} ซม.² ; L = ${nf(S.L, 1)} ม.<br>${pt.mat === 'steel' ? 'E = 200 GPa' : `f'c = ${S.fc} MPa → Ec = 4700√f'c = ${nf(inp.Ep_kPa / 1e6, 2)} GPa`}<br>Wp = ${nf(inp.Wp_pile, 2)} ตัน + หมวก ${nf(S.wcap, 2)} = ${nf(inp.Wp_t, 2)} ตัน</div></div>
+    </div>
+    <div>
+      <h3>2. ค้อน/ลูกตุ้ม และข้อมูลที่ต้องการ</h3>
+      <div class="small">${H.label}<br>น้ำหนักลูกตุ้ม Wr = ${nf(inp.Wr_t, 2)} ตัน ; ระยะยก H = ${nf(S.h, 2)} ม.<br>Eh = Wr·H = ${nf(X.E, 2)} kN·m (${nf(inp.Wr_t * S.h, 2)} ตัน-ม.)<br><b>Qa ที่ต้องการ = ${nf(S.Qa, 1)} ตัน</b></div>
+    </div>
+  </div>
+  <h3>3. สมการที่เลือก: ${eq.name}</h3>
+  <div><b>${esc(eq.formula)}</b></div>
+  <div class="small">ตัวแปร: ${eq.vars.map(v => `${v[0]} = ${v[1]} [${v[2]}]`).join(' ; ')}</div>
+  <div class="small">ที่มา: ${esc(eq.src)}</div>
+  <div class="small"><b>FS = ${nf(fs, 2)}</b> (ค่าแนะนำ ${eq.fs.def}; ช่วงนิยม ${eq.fs.range[0]}–${eq.fs.range[1]}; ${esc(eq.fs.src)}). ${FS_NOTE}</div>
+  <h3>4. พารามิเตอร์ที่ใช้</h3>
+  ${params ? `<table><tr><th>พารามิเตอร์</th><th>ค่า</th><th>ตัวเลือก/เหตุผล</th></tr>${params}</table>` : '<div class="small">สมการนี้ไม่มีพารามิเตอร์เพิ่มเติม</div>'}
+  <h3>5. การแทนค่า</h3>
+  <div class="steps">${steps.map(s => `<div>${s}</div>`).join('')}</div>
+  <h3>6. ผลลัพธ์</h3>
+  ${r.ok ? `<div class="res">ระยะจมต่อ 10 ครั้งสุดท้าย = <b>${nf(r.ten_mm, 1)} มม. (${nf(r.ten_cm, 2)} ซม.)</b> &nbsp;|&nbsp; s = ${nf(r.s_mm, 2)} มม./ครั้ง &nbsp;|&nbsp; ${nf(r.per25, 1)} ครั้ง/25 ซม.</div>` : `<div class="res">${esc(r.text || r.reason)}</div>`}
+  ${warns}
+  <h3>7. เปรียบเทียบทุกสมการ (อินพุตเดียวกัน, FS/พารามิเตอร์ของแต่ละสมการ)</h3>
+  ${cmpTable(rows)}
+  <div class="small">ที่มาสมการ: Wellington (1892) ENR; Hiley (1930); Janbu (1953); Gates (1957); Sørensen & Hansen (1957) Danish; Pacific Coast UBC; Navy-McKay; Eytelwein; WSDOT (Allen 2005) — อ้างจาก Olson & Flaate (1967)/TTI 33-12, Das, Bowles, Tomlinson, FHWA GEC-12, WSDOT GDM</div>
+  <div class="disc"><b>ข้อสงวนสิทธิ์:</b> ${DISC}</div>`;
+  const bind = (id, k) => $(id).addEventListener('input', e => { S.proj[k] = e.target.value; save(); });
+  bind('pjName', 'name'); bind('pjDate', 'date'); bind('pjBy', 'by');
+}
+
+/* ---- แท็บ/เหตุการณ์ ---- */
+function show(v) {
+  const rep = v === 'rep';
+  $('calcView').style.display = rep ? 'none' : ''; $('reportView').style.display = rep ? 'block' : 'none';
+  $('tabCalc').setAttribute('aria-selected', !rep); $('tabRep').setAttribute('aria-selected', rep);
+  if (rep) renderReport(); window.scrollTo(0, 0);
+}
+function bind() {
+  const on = (id, fn, ev = 'input') => $(id).addEventListener(ev, fn);
+  on('pileType', e => { S.pileType = e.target.value; S.secStd = '0'; S.fc = PILE_TYPES[S.pileType].fc || S.fc; ['n', 'k', 'C1'].forEach(k => delete S.par[k]); $('fc').value = S.fc; fillSections(); update(true); }, 'change');
+  on('secKind', e => { S.secKind = e.target.value; S.secStd = '0'; fillSections(); update(false); }, 'change');
+  on('secStd', e => { S.secStd = e.target.value; if (S.secStd === 'custom') { const sec = SECTIONS[S.secKind]; const base = currentSection(); } fillSections(); update(false); }, 'change');
+  on('L', e => { S.L = num(e.target.value); update(false); });
+  on('fc', e => { S.fc = num(e.target.value); update(false); });
+  on('wpAuto', e => { S.wpAuto = e.target.checked; update(false); }, 'change');
+  on('wpMan', e => { S.wpMan = num(e.target.value); update(false); });
+  on('wcap', e => { S.wcap = num(e.target.value); update(false); });
+  on('hammer', e => { S.hammer = e.target.value; ['eh', 'c_enr', 'Fe'].forEach(k => delete S.par[k]); update(true); }, 'change');
+  on('wrSel', e => { S.wrSel = e.target.value; update(false); }, 'change');
+  on('wrCustom', e => { S.wrCustom = num(e.target.value); update(false); });
+  on('h', e => { S.h = num(e.target.value); update(false); });
+  on('Qa', e => { S.Qa = num(e.target.value); update(false); });
+  on('eq', e => { S.eq = e.target.value; renderEq(); update(true); }, 'change');
+  on('fs', e => { S.fs[S.eq] = num(e.target.value); update(false); });
+  $('btnRec').onclick = () => { delete S.fs[S.eq]; curEq().uses.forEach(id => delete S.par[id]); renderEq(); update(true); };
+  $('btnReset').onclick = () => { if (confirm('รีเซ็ตข้อมูลทั้งหมดกลับเป็นค่าเริ่มต้น?')) { const p = S.proj; S = DEFAULTS(); S.proj = p; init(); } };
+  $('btnCmp').onclick = () => { const b = $('cmpBox'); b.hidden = !b.hidden; if (!b.hidden) b.innerHTML = cmpTable(compareAll()); $('btnCmp').textContent = b.hidden ? 'เปรียบเทียบทุกสมการ' : 'ซ่อนตารางเปรียบเทียบ'; };
+  $('btnToRep').onclick = () => show('rep'); $('tabRep').onclick = () => show('rep'); $('tabCalc').onclick = () => show('calc'); $('btnBack').onclick = () => show('calc');
+  $('btnPrint').onclick = () => { renderReport(); window.print(); };
+  $('disc-bar').onclick = () => $('disc-bar').classList.toggle('open');
+  $('ackChk').onchange = e => { $('ackBtn').disabled = !e.target.checked; };
+  $('ackBtn').onclick = () => { try { localStorage.setItem(ACKKEY, '1'); } catch (e) {} $('ack').classList.remove('show'); };
+  document.querySelectorAll('.tipbtn[data-tip]').forEach(b => b.onclick = () => { const t = $(b.dataset.tip); if (t) t.hidden = !t.hidden; });
+}
+function init() {
+  fillStatic(); fillSections(); setValues(); renderEq(); update(true);
+}
+fillStatic(); bind();
+// custom dims: เริ่มจากขนาดมาตรฐานที่เลือกอยู่
+$('secStd').addEventListener('change', () => { if (S.secStd === 'custom') { const sec = SECTIONS[S.secKind], e = sec.std[0]; if (!(S.dims.B > 0)) S.dims = { B: e.B, D: e.D || e.B, tw: e.tw || 0, tf: e.tf || 0 }; fillSections(); update(false); } });
+fillSections(); setValues(); renderEq(); update(true); show('calc');
+let acked = false; try { acked = localStorage.getItem(ACKKEY) === '1'; } catch (e) {}
+if (!acked) $('ack').classList.add('show');
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
+</script>
+</body>
+</html>
