@@ -4,8 +4,8 @@ const html = fs.readFileSync(__dirname + '/../index.html', 'utf8');
 const m = html.match(/CORE-BEGIN[\s\S]*?\*\/([\s\S]*?)\/\* CORE-END/);
 assert(m, 'ไม่พบส่วน CORE');
 const ctx = {}; vm.createContext(ctx);
-vm.runInContext(m[1] + '\nthis.__=({U,G,EQS,PARAMS,HAMMERS,SECTIONS,sectionAreaM2,pileEp_kPa,buildX,solveS,solveEq,checks,RHO,PILE_TYPES});', ctx);
-const { U, G, EQS, PARAMS, HAMMERS, SECTIONS, sectionAreaM2, pileEp_kPa, buildX, solveEq, checks } = ctx.__;
+vm.runInContext(m[1] + '\nthis.__=({flagOutliers,U,G,EQS,PARAMS,HAMMERS,SECTIONS,sectionAreaM2,pileEp_kPa,buildX,solveS,solveEq,checks,RHO,PILE_TYPES});', ctx);
+const { flagOutliers, U, G, EQS, PARAMS, HAMMERS, SECTIONS, sectionAreaM2, pileEp_kPa, buildX, solveEq, checks } = ctx.__;
 let n = 0; const ok = (c, msg) => { assert(c, msg); n++; };
 const near = (a, b, tol, msg) => { assert(Math.abs(a - b) <= tol * Math.max(1, Math.abs(b)), `${msg}: ${a} vs ${b}`); n++; };
 
@@ -50,13 +50,23 @@ const by = id => EQS.find(e => e.id === id);
 { const Xj = buildX(Object.assign({}, base, { Qa_t: 30 })); const r = solveEq(by('janbu'), Xj, 3); const s = r.s, e = 0.8 * E;
   const Cd = 0.75 + 0.15 * Wp / Wr, lam = e * L / (A * Ep * s * s), Ku = Cd * (1 + Math.sqrt(1 + lam / Cd));
   near(e / (Ku * s), 30 * G * 3, 1e-8, 'Janbu Ru'); near(r.extra.Cd, Cd, 1e-12, 'Janbu Cd'); }
-// Gates: s = 10^(2.4 − Ru/(27√E))  (นิ้ว, kip, ft-kip)
-{ const Xg = buildX(Object.assign({}, base, { Qa_t: 30 })); const r = solveEq(by('gates'), Xg, 3);
-  const Rk = U.kN_to_kip(30 * G * 3), Eft = U.kNm_to_ftkip(0.8 * E); const sin = Math.pow(10, 2.4 - Rk / (27 * Math.sqrt(Eft)));
-  near(r.s, U.in_to_m(sin), 1e-8, 'Gates s'); }
-// Pacific Coast
+// Gates (FHWA-modified): ตรวจเทียบสูตรเขียนใหม่ในเทสต์ + ตัวเลขคำนวณมือ
+{ const Xg = buildX(Object.assign({}, base, { Qa_t: 30 })); const r = solveEq(by('gates'), Xg, 3.5);
+  const Rk = U.kN_to_kip(30 * G * 3.5), Eftlb = 0.8 * E / 1.3558179483 * 1000; const N = Math.pow(10, (Rk + 100) / (1.75 * Math.sqrt(Eftlb))) / 10;
+  near(r.s, U.in_to_m(1 / N), 1e-8, 'Gates s'); }
+{ // มือ: eh·Wr·h = 30 kN·m → 22.127 ft-kip = 22,127 ft-lb ; √ = 148.75 ; s = 12.7 มม. = 0.5 นิ้ว → N = 2 ; Rn = 1.75×148.75×log10(20) − 100 = 238.7 kip = 1061.8 kN
+  const Xg = { eh: 1, E: 30, Wr: 1, h: 1, Wp: 0 }; const Ru = by('gates').calc(Xg, 0.0127).Ru;
+  near(Ru, 1061.8, 2e-3, 'Gates มือ (N=2, E=22,127 ft-lb)'); }
+// WSDOT: ln, Fe, kip/ft  (drop hammer → Fe = 0.28)
+{ near(buildX(base).Fe, 0.28, 1e-12, 'Fe drop'); const Xw = buildX(Object.assign({}, base, { Qa_t: 30 })); const r = solveEq(by('wsdot'), Xw, 2.6);
+  const Rk = U.kN_to_kip(30 * G * 2.6), den = 6.6 * 0.28 * U.kN_to_kip(Wr) * U.m_to_ft(1.2); const sin = 10 / Math.exp(Rk / den);
+  near(r.s, U.in_to_m(sin), 1e-8, 'WSDOT s (ln)'); }
+{ // มือ: Wr = 10 kip, h = 4 ft, Fe = 0.5, N = 2 → 6.6×0.5×40×ln(20) = 395.4 kip = 1758.9 kN
+  const Xw = { Fe: 0.5, Wr: U.kip_to_kN(10), h: U.in_to_m(48) }; near(by('wsdot').calc(Xw, 0.0127).Ru, U.kip_to_kN(6.6 * 0.5 * 40 * Math.log(20)), 1e-9, 'WSDOT มือ');
+  near(by('wsdot').calc(Xw, 0.0127).Ru, 1758.9, 2e-3, 'WSDOT มือ kN'); }
+// Pacific Coast: Ru(s + (Ru/FS)·L/AE) = eh·Eh·r  → s = eh·Eh·r/Ru − (Ru/FS)·L/AE
 { const Xp = buildX(Object.assign({}, base, { Qa_t: 30 })); const r = solveEq(by('pcubc'), Xp, 4); const Ru = 30 * G * 4;
-  const q = (Wr + 0.10 * Wp) / (Wr + Wp); near(r.s, 0.8 * E * q / Ru - Ru * L / (A * Ep), 1e-8, 'PCUBC s'); near(Xp.k, 0.10, 1e-12, 'k คอนกรีต'); }
+  const q = (Wr + 0.10 * Wp) / (Wr + Wp); near(r.s, 0.8 * E * q / Ru - (Ru / 4) * L / (A * Ep), 1e-8, 'PCUBC s'); near(Xp.k, 0.10, 1e-12, 'k คอนกรีต'); }
 // Navy-McKay, Eytelwein
 { const Xn = buildX(Object.assign({}, base, { Qa_t: 30 })); const Ru = 30 * G * 6;
   near(solveEq(by('navy'), Xn, 6).s, Wr * 1.2 / (Ru * (1 + 0.3 * Wp / Wr)), 1e-8, 'Navy s');
@@ -81,4 +91,35 @@ ok(EQS.length === 10 && EQS[0].id === 'enr' && EQS[1].id === 'hiley', '10 สม
 // พารามิเตอร์ตามชนิดเสาเข็ม/ค้อน
 { const xs = buildX({ c: { hammer: 'diesel', pileType: 'steel', mat: 'steel' }, A_m2: 0.0092, Ep_kPa: 2e8, L: 30, h: 2, Qa_t: 80, Wr_t: 4.5, Wp_t: 2.5, par: {} });
   near(xs.k, 0.25, 1e-12, 'k เหล็ก'); near(xs.n, 0.35, 1e-12, 'n เหล็ก'); near(xs.c_enr, 0.00254, 1e-12, 'c steam'); near(xs.eh, 0.85, 1e-12, 'eh diesel'); }
+
+// --- ตรวจทิศทาง: Qa↑ → s↓ ; Wr↑ → s↑ ; h↑ → s↑ (ทุกสมการ) ---
+for (const eq of EQS) {
+  const sOf = o => { const r = solveEq(eq, buildX(Object.assign({}, base, { Qa_t: 20 }, o)), eq.fs.def); ok(r.ok, `${eq.id} ต้องมีคำตอบ ${JSON.stringify(o)}`); return r.s; };
+  const s0 = sOf({});
+  ok(sOf({ Qa_t: 25 }) < s0, `${eq.id}: Qa เพิ่ม → s ต้องลด`); ok(sOf({ Qa_t: 15 }) > s0, `${eq.id}: Qa ลด → s ต้องเพิ่ม`);
+  ok(sOf({ Wr_t: 7 }) > s0, `${eq.id}: ลูกตุ้มหนักขึ้น → s ต้องเพิ่ม`); ok(sOf({ h: 1.5 }) > s0, `${eq.id}: ยกสูงขึ้น → s ต้องเพิ่ม`);
+}
+// --- ตัวเลขคำนวณมือ: ENR / Navy-McKay / Eytelwein (Wr = 50 kN, h = 1 m, Wp = 100 kN, s = 20 มม.) ---
+{ const Xm = { Wr: 50, Wp: 100, h: 1, E: 50, c_enr: 0.0254 };
+  near(by('enr').calc(Xm, 0.02).Ru, 50 / (0.02 + 0.0254), 1e-12, 'ENR'); near(by('enr').calc(Xm, 0.02).Ru, 1101.3, 1e-3, 'ENR มือ');   // 50/0.0454
+  near(by('navy').calc(Xm, 0.02).Ru, 50 / (0.02 * (1 + 0.3 * 2)), 1e-12, 'Navy'); near(by('navy').calc(Xm, 0.02).Ru, 1562.5, 1e-9, 'Navy มือ'); // 50/(0.02×1.6)
+  near(by('eyt').calc(Xm, 0.02).Ru, 2500 / (0.02 * 150), 1e-12, 'Eyt'); near(by('eyt').calc(Xm, 0.02).Ru, 833.333, 1e-6, 'Eyt มือ'); }
+// --- ตัวอย่างมาตรฐาน (□0.30, L=21, Wr=4.5 ตัน, H=1.0, Qa=40, drop): ทุกสมการที่มีคำตอบต้องอยู่ภายใน 5 เท่าของมัธยฐาน ---
+{ const { standard, median } = require('./standard.js'); const rows = standard(); const ss = rows.filter(x => x.r.ok).map(x => x.r.s_mm); const med = median(ss);
+  console.log('   ตัวอย่างมาตรฐาน: มัธยฐาน s =', med.toFixed(2), 'มม. ; ' + rows.map(x => x.eq.id + '=' + (x.r.ok ? x.r.s_mm.toFixed(1) : 'ไม่มีคำตอบ')).join(', '));
+  rows.forEach(x => { if (x.r.ok) ok(x.r.s_mm / med < 5 && x.r.s_mm / med > 0.2, `${x.eq.id} s=${x.r.s_mm} ต่างจากมัธยฐาน ${med} เกิน 5 เท่า`); });
+  ok(!rows.find(x => x.eq.id === 'enr').r.ok, 'ENR (c = 25.4 มม.) ไม่มีคำตอบ เพราะ Wr·h = 44.1 < Ru·c = 2354×0.0254 = 59.8 kN·m');
+  ok(rows.filter(x => !x.r.ok).length === 1, 'มีเพียง ENR ที่ไม่มีคำตอบ'); }
+// --- เตือนช่วง Gates / s ---
+{ const Xg = buildX(Object.assign({}, base, { Qa_t: 30 })); const eq = by('gates'); const r = solveEq(eq, Xg, 3.5);
+  const w = checks(Object.assign({ fc: 35, secMaxMm: 300, Wp_t }, base), Xg, r, eq, 3.5); const N = 25.4 / r.s_mm;
+  ok((N < 3 || N > 10) === w.some(x => x[1].startsWith('Gates: N')), 'เตือนช่วง N ของ Gates สอดคล้องกับ N'); }
+// --- เตือน s ผิดปกติ ---
+{ const eq = by('navy'), Xs = buildX(base), mk = s_mm => ({ ok: true, s_mm });
+  const wc = s => checks(Object.assign({ fc: 35, secMaxMm: 300, Wp_t }, base), Xs, mk(s), eq, 6).filter(x => x[0] === 'warn').map(x => x[1]);
+  ok(wc(0.5).some(x => x.includes('น้อยกว่า 1 มม.')), 's < 1 มม. ต้องเตือนเหลือง'); ok(wc(30).some(x => x.includes('มากกว่า 25 มม.')), 's > 25 มม. ต้องเตือนเหลือง');
+  ok(!wc(10).some(x => x.includes('1 มม.') || x.includes('25 มม.')), 's ปกติไม่เตือน'); }
+// --- ไฮไลต์ outlier ในตารางเปรียบเทียบ ---
+{ const rows = [1, 10, 12, 100].map(s => ({ r: { ok: true, s_mm: s } })).concat([{ r: { ok: false } }]); const med = flagOutliers(rows);
+  ok(Math.abs(med - 11) < 1e-12, 'มัธยฐาน'); ok(rows[0].outlier && rows[3].outlier && !rows[1].outlier && !rows[2].outlier && !rows[4].outlier, 'ไฮไลต์เฉพาะที่เกิน 5 เท่า'); }
 console.log(`ผ่านทั้งหมด ${n} การตรวจสอบ`);
